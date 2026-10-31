@@ -201,9 +201,21 @@ g -C "$C" diff --quiet -- docs/architecture/REPOSITORY-MAP.adoc \
 # commit, after a removal), reproduces the stale map lintel shipped.
 SM="$work/stale-map"
 use_template "$SM"
-(cd "$SM" && rm -rf archetypes && bash scripts/gen-repo-map.sh . >/dev/null)
-grep -q '^| `archetypes' "$SM/docs/architecture/REPOSITORY-MAP.adoc" \
-    || fail 'control: index mode no longer shows the pre-commit staleness; this check is vacuous'
+# Index mode must be observably index-driven: delete a directory from the working
+# tree WITHOUT staging the deletion, regenerate, and require that directory's row
+# to survive — it survives because the map is generated from the index. The
+# template demonstrates this with `archetypes`, the directory the mint deletes,
+# so on a minted tree there is no row left to survive and the control fails as
+# vacuous for a reason that says nothing about the child. Fall back to a
+# directory every tree has, and keep the assertion identical.
+CTRL_DIR=""
+for d in archetypes www benches; do
+    if [ -d "$SM/$d" ]; then CTRL_DIR="$d"; break; fi
+done
+[ -n "$CTRL_DIR" ] || fail 'control: no candidate directory to demonstrate index mode with'
+(cd "$SM" && rm -rf "$CTRL_DIR" && bash scripts/gen-repo-map.sh . >/dev/null)
+grep -q "^| \`$CTRL_DIR" "$SM/docs/architecture/REPOSITORY-MAP.adoc" \
+    || fail "control: index mode no longer shows the pre-commit staleness ($CTRL_DIR); this check is vacuous"
 pass "the committed map is fresh (the index-mode control reproduces lintel's stale map)"
 
 (cd "$C" && env -u GITHUB_REPOSITORY bash scripts/check-no-placeholders.sh .) > "$work/ph.log" 2>&1 \
