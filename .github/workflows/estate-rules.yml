@@ -127,7 +127,17 @@ jobs:
       - name: Use-this-template mint end to end
         run: |
           command -v uuidgen >/dev/null || { sudo apt-get update -q && sudo apt-get install -y -q uuid-runtime; }
-          bash tests/e2e/use_template_mint_test.sh
+          log="$RUNNER_TEMP/mint-e2e.log"
+          status=0
+          bash tests/e2e/use_template_mint_test.sh >"$log" 2>&1 || status=$?
+          cat "$log"
+          if [ "$status" -eq 0 ]; then exit 0; fi
+          # Re-emit the tail as an annotation. The cause of a failed lane appears
+          # only in this job's log, and a failure nobody can read without the log
+          # endpoint is a failure nobody can act on.
+          body="$(tail -n 60 "$log" | sed -e 's/%/%25/g' -e 's/\r//g' | awk 'BEGIN{ORS=""} {printf "%s%%0A", $0}')"
+          echo "::error title=Mint e2e failed (exit $status)::${body}"
+          exit "$status"
       # An archetype overlay once shipped its own actions.lock, which replaced
       # the spine's at mint and left every Julia mint with Lock Sync red.
       - name: Archetype lock fragments merge into a valid lock
