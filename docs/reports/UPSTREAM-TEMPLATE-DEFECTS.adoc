@@ -3,8 +3,9 @@
 = Upstream defects found by minting this repository
 :toc:
 
-:status: FILED — two issues against hyperpolymath/rsr-template-repo, quoted below
- as they were sent. Every claim here was reproduced, not inferred: the mint ran on
+:status: FILED — link:https://github.com/hyperpolymath/rsr-template-repo/issues/268[rsr-template-repo#268]
+ (D1) and link:https://github.com/hyperpolymath/rsr-template-repo/issues/269[#269] (D2),
+ filed 2026-10-31. Every claim here was reproduced, not inferred: the mint ran on
  this repository on 2026-10-31, and each failing lane was read to its cause.
 
 == Why these exist
@@ -210,11 +211,11 @@ and not two.
 |===
 | Issue | Subject
 
-| D1
+| link:https://github.com/hyperpolymath/rsr-template-repo/issues/268[#268] (D1)
 | two records naming `build/docs-seed/` survive the mint, so two proven-suite
   lanes are red in every child
 
-| D2
+| link:https://github.com/hyperpolymath/rsr-template-repo/issues/269[#269] (D2)
 | three lanes assert the template's own shape and cannot pass in a child: the mint
   e2e's index-mode control, the governance badge test, and KYAML drift left by the
   substitution pass

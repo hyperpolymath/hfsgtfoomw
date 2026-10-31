@@ -213,8 +213,9 @@ document with a shell.
 | Needs only the profile text, which is already written.
 
 | T3. Template defects, upstream
-| agent files, you triage
-| two issues against `rsr-template-repo`
+| filed; you triage
+| link:https://github.com/hyperpolymath/rsr-template-repo/issues/268[#268] and
+ link:https://github.com/hyperpolymath/rsr-template-repo/issues/269[#269]
 | Found by minting this repository, and they affect every child of the template:
  (i) `.hypatia-ignore` ships `structural_drift/SD022:build/docs-seed/` but the mint
  deletes `build/docs-seed/`, so every minted repo fails
