@@ -112,6 +112,10 @@ jobs:
           if [ "$status" -eq 0 ]; then exit 0; fi
           # Same reason as the mint lane: emit the tail as an annotation so the
           # failure can be read without the log endpoint.
-          body="$(tail -n 60 "$log" | sed -e 's/%/%25/g' -e 's/\r//g' | awk 'BEGIN{ORS=""} {printf "%s%%0A", $0}')"
+          # Lane verdicts, not a blind tail: a 60-line tail of this suite is all
+          # www/ checks and the bench table, and the failing lane is 200 lines
+          # above it. The verdict lines are the whole signal.
+          body="$(grep -E '^(==> \[proven-suite\]|    (PASS|FAIL|INERT/SETUP)|proven-suite:)' "$log" \
+                   | sed -e 's/%/%25/g' -e 's/\r//g' | awk 'BEGIN{ORS=""} {printf "%s%%0A", $0}')"
           echo "::error title=Proven suite failed (exit $status)::${body}"
           exit "$status"
