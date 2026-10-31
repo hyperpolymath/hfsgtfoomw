@@ -112,19 +112,14 @@ jobs:
           if [ "$status" -eq 0 ]; then exit 0; fi
           # Same reason as the mint lane: emit the tail as an annotation so the
           # failure can be read without the log endpoint.
-          # Lane verdicts, not a blind tail: a 60-line tail of this suite is all
-          # www/ checks and the bench table, and the failing lane is 200 lines
-          # above it. The verdict lines are the whole signal.
-          body="$(grep -E '^(==> \[proven-suite\]|    (PASS|FAIL|INERT/SETUP)|proven-suite:)' "$log" \
-                   | sed -e 's/%/%25/g' -e 's/\r//g' | awk 'BEGIN{ORS=""} {printf "%s%%0A", $0}')"
-          # One more block: the 30 lines before the first failing verdict, which is
-          # where a Silence-and-Firing lane says which case it lost.
-          first="$(grep -n -m1 -E '^    (FAIL|INERT/SETUP) \(' "$log" | cut -d: -f1 || true)"
-          ctx=""
-          if [ -n "$first" ]; then
-            from=$(( first > 30 ? first - 30 : 1 ))
-            ctx="$(sed -n "${from},$((first + 3))p" "$log" \
-                    | sed -e 's/%/%25/g' -e 's/\r//g' | awk 'BEGIN{ORS=""} {printf "%s%%0A", $0}')"
-          fi
-          echo "::error title=Proven suite failed (exit $status)::${body}%0A--- first failure context ---%0A${ctx}"
+          # Two small annotations, because the API truncates a long message and a
+          # truncated one hides the very line it was added to carry.
+          #   1. the verdicts, one line per lane;
+          #   2. the dozen lines before the first FAIL, which is where a
+          #      Silence-and-Firing lane says which case it lost.
+          esc() { sed -e 's/%/%25/g' -e 's/\r//g' | awk 'BEGIN{ORS=""} {printf "%s%%0A", $0}'; }
+          verdicts="$(grep -E '^    (PASS \(0\)|FAIL \(|INERT/SETUP \()' "$log" | esc)"
+          echo "::error title=Proven lane verdicts::${verdicts}"
+          context="$(grep -B12 -A3 -m1 'FAIL (' "$log" | esc)"
+          echo "::error title=Proven first failure::${context}"
           exit "$status"
