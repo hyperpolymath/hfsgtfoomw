@@ -76,15 +76,29 @@ Blank is honest; guessed is not.
 |===
 | Platform | Status | Notes
 
-| Windows + Firefox / Edge / Chrome (Tampermonkey-class manager)
+| Windows + Chromium 116+ (Edge, Chrome) with a Tampermonkey-class manager
 | unverified
-| The first target. In-page float only; the native PiP window is not
-  controllable (see the mechanisms section of the interaction model)
+| The first target, and a *real window*: Document Picture-in-Picture carries our
+  own DOM into an always-on-top, OS-composited window (ADR-0005). The browser
+  owns its position, so AC-3, AC-5 and AC-6 are reflow-and-close there, not
+  travel.
+
+| Windows + Firefox 151+
+| unverified
+| The same mechanism, on a younger floor. Firefox has Document PiP from 151 and
+  no `requestPictureInPicture()` at all, so it has no classic fallback lane.
+  Below 151 a Firefox row is a fallback row even on Windows.
+
+| Windows + Safari, Firefox before 151, or a manager without Document PiP
+| unverified
+| The fallback lane: classic video PiP where the engine exposes it, otherwise the
+  in-page float. One `<video>`, no custom UI, no script control of position.
 
 | Windows, app shell
 | unverified
-| The only route to a true OS-level always-on-top window: layered window with
-  per-window alpha, click-through via an extended window style, topmost ordering
+| The geometry lane, and the only one where AC-3, AC-5 and AC-6 pass as written:
+  layered window with per-window alpha, click-through via an extended window
+  style, topmost ordering. `gossamer` owns this window, so it can move it.
 
 | Linux, wlroots compositors
 | unverified
@@ -103,6 +117,10 @@ Blank is honest; guessed is not.
 | out of scope
 | No third-party floating window exists; only our own video can enter PiP
 |===
+
+The AC split behind the first four rows — which criteria can pass in a browser at
+all, and which belong to the window the app owns — is decided in
+link:../decisions/0005-window-mechanism.adoc[ADR-0005].
 
 A row moves off `unverified` only when an observation is attached. The run sheet,
 the fixture it is observed against and the evidence format are specified in

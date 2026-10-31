@@ -303,5 +303,19 @@ first release.
 | `veridical-computing` | estate spine
 |===
 
+*Status: approved by the owner on 2026-10-31, not yet applied.* The credential
+this workspace holds can read repository topics but not write them (the topics
+API answers `403 Resource not accessible by integration`), and the set is
+deliberately not in `.github/settings.yml`: that file is applied to every child
+of the template, so a product topic list there would be inherited by unrelated
+repositories. Apply it once, out of band, as the settings file's own doctrine
+requires:
+
+[source,console]
+----
+gh repo edit hyperpolymath/hfsgtfoomw \
+  --add-topic picture-in-picture,userscript,greasemonkey,tampermonkey,browser-extension,always-on-top,window-management,overlay,desktop-app,productivity,accessibility,affinescript,affine-types,gossamer,webview,typed-provenance,formal-verification,zero-trust,epistemic-infrastructure,veridical-computing
+----
+
 Alternates, if one of the above proves untrue later: `violentmonkey`,
 `equivalence-aware-computing`, `linear-types`, `webassembly`.
