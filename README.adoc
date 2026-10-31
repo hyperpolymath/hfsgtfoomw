@@ -8,192 +8,144 @@ image:https://img.shields.io/badge/status-pre--alpha-orange[Status: pre-alpha]
 image:https://img.shields.io/badge/Code-MPL--2.0-blue.svg?logo=mozilla[Code licence: MPL-2.0,link="https://opensource.org/licenses/MPL-2.0"]
 image:https://img.shields.io/badge/Docs-CC--BY--SA--4.0-blue.svg?logo=creativecommons[Docs licence: CC-BY-SA-4.0,link="https://creativecommons.org/licenses/by-sa/4.0/"]
 
-*Working on one screen, without giving up the thing you need to see.*
+*The thing you are keeping an eye on should get out of the way -- by itself.*
 
-`hfsgtfoomw` (the acronym is the name; you already know how to say it) is a
-single-screen attention layer: one keystroke puts the thing you need to keep an
-eye on into a small always-on-top window in the corner, and one keystroke takes
-it away again. The window you are working in never loses focus, never gets
-covered, and never gets resized out of your way.
+Picture-in-picture solved one problem and created another. You pinned the call,
+the build log, the dashboard, the video -- and now it sits exactly where the
+button is. So you drag it. Then it is over the thing you need to read. So you
+drag it again. Then the page scrolls, the layout changes, and it is in front of
+the *next* button.
 
-== The problem
+This project is about that second problem: a floating window that knows it is
+in the way, and moves itself, dissolves, or disappears for you -- and comes back
+when you want it, without you hunting for it.
 
-A second monitor is a workaround for three separate problems, and buying one
-only solves the first:
+== The three ways it gets in the way
 
-. *Space contention.* Two things need to be visible at once -- the work, and a
-  reference: a call, a build log, a dashboard, a doc, a chat.
-. *Forced context switching.* Alt-tab is a full-precision action: you lose your
-  place, your scroll position, and your train of thought, every time.
-. *No second screen available.* Laptop on a train, hot desk, small desk, or an
-  employer that issues one screen and no budget for two.
+These are the cases the design is built around. If a feature does not serve one
+of them, it is not in scope.
 
-Picture-in-picture is the closest thing the desktop has to an answer, and it is
-almost always the *wrong* picture-in-picture: video only, in one application,
-on one platform, and it usually steals focus when you interact with it.
+[cols="1,3",options="header"]
+|===
+| Case | What happens today
 
-== What this will be
+| *A. On and off, and settings*
+| The control is buried in a menu, or it is a browser button you have to find
+  before you can make it stop. Turning it on or off has to be one action,
+  available from the toolbar, a keystroke, or the window itself.
 
-One control surface with the same behaviour everywhere:
+| *B. It covers the thing you need*
+| You are typing into a field, or copying text, and the floating window is over
+  it. You move the window, then lose where the field was. Or the window is
+  semi-transparent over text you cannot read anyway.
 
-* *One chord in, one chord out.* Idempotent. No menus, no window hunting.
-* *Any source:* a native window, a screen region, a web page, a terminal pane,
-  or a log stream.
-* *Never steals keyboard focus.* Typing always lands in your main window. This
-  is the "get out of my way" test, and most naive implementations fail it.
-* *Deterministic geometry.* Same corner, same size, every time, across
-  workspace switches and monitor hot-plug.
-* *Degrades loudly.* If the platform cannot do the good version, it says which
-  primitive is missing and falls back to the next best one. It never silently
-  does nothing.
+| *C. It chases you down the page*
+| The GitHub review flow, in full: pin something, scroll to approve, move it off
+  the approve button, get to the review comment box and it is over the text, move
+  it and the CI status is hidden, move it and it is back over *commit*. Every
+  move is a decision you did not want to make.
+|===
 
-== Status: pre-alpha, and honest about it
+Case C is the one nobody else solves -- every picture-in-picture implementation
+makes you the collision-avoidance system. That is the whole product.
+
+== What it does
+
+Behaviour is described in full in
+link:docs/proposals/INTERACTION-MODEL.adoc[the interaction model]; the short
+version:
+
+[cols="1,3",options="header"]
+|===
+| Behaviour | What you get
+
+| *Nudge*
+| When the pointer, the caret or the focused field approaches, the window slides
+  clear of it -- toward the nearest free edge, not to a fixed corner.
+
+| *Chip*
+| Hover it and it shrinks to a small tab for a settable moment, then restores on
+  its own, or on click. Useful when you need the space for a second.
+
+| *Fling*
+| Throw it to another part of the screen (or another monitor). It settles, stays
+  out of the way, and comes back when clicked or when a timer expires.
+
+| *Banish*
+| Throw it off-screen entirely for a set period. A thin sliver remains at the
+  edge so it can be brought back before the timer.
+
+| *Ghost*
+| Ultra-transparent, either always or only while the pointer is near, so you can
+  read what is underneath. Down to invisible, with the audio still running.
+
+| *Click-through*
+| While ghosted, clicks pass through to the page underneath. Hold a modifier
+  (or tap a key) to grab the window itself again. This is what makes "read
+  through it, then click the thing behind it" work.
+
+| *One action, always*
+| On, off and every setting are reachable from the toolbar, a single keystroke,
+  and the window's own handle. No menu archaeology.
+
+| *Keyboard-first*
+| Every behaviour above has a keyboard equivalent. Hover is a convenience, never
+  the only way in -- otherwise it is unusable without a mouse, and unreachable
+  for anyone with a tremor.
+|===
+
+== Two things, one idea
+
+The behaviours split across two delivery vehicles because browsers and operating
+systems allow different amounts of control. Details, and the honest limits of
+each, are in
+link:docs/proposals/INTERACTION-MODEL.adoc#mechanisms[the mechanisms section].
+
+* *A userscript* for the page you are on: an in-page float that can host a video,
+  a panel or a document, with every behaviour above under full control. Works in
+  Tampermonkey-class managers, in Firefox, Chrome and Edge, on Windows and
+  Linux, with no install and no permissions.
+* *An app* for a real, OS-level always-on-top window: true transparency, true
+  click-through, and windows that live above other applications rather than
+  above the page. This is where "float it over Excel while you work in Word"
+  becomes possible.
+
+A browser cannot move, fade or click-through its own picture-in-picture window:
+that window belongs to the browser and the OS. So the choreography has to live
+in one of the two vehicles above. Saying that plainly is more useful than
+pretending a toggle can do it.
+
+== Status
 
 [IMPORTANT]
 ====
-*There is no code yet.* This repository is currently the
-https://github.com/hyperpolymath/hfsgtfoomw[RSR template] scaffolded for
-this project: CI/CD, machine-readable metadata, an ABI/FFI seam and governance
-scaffolding are in place, and the git history is the template's. No window has
-been moved by anything in this tree.
-
-The template's placeholders are still unsubstituted and its repository deed
-still identifies as the template's. That is known, recorded and scheduled -- see
-link:docs/proposals/HFSGTFOOMW-ASSESSMENT.adoc[the assessment and options
-document], Option 0.
+*Pre-alpha. Nothing is usable yet.* No userscript has been published, no app has
+been built, and this repository is still mostly scaffolding: it was minted from
+the RSR template on 2026-10-31 and the identity fields are partly unassigned.
+The one thing that *is* real is the specification work below, because that is
+where the design risk is.
 ====
 
-Nothing below is a claim of a working feature. It is the acceptance criteria
-this repository will be judged against.
+What exists today:
 
-== Definition of done
-
-The first release is done when all of these are true on the primary platform:
-
-. From a normal single-window workspace, *one chord* makes a window of roughly
-  480x270 appear in a chosen corner, showing live content from another source.
-. It *never* takes keyboard focus; typing continues uninterrupted in the main
-  window.
-. One chord hides it; the chord is idempotent; state survives a restart of the
-  overlay and, where the platform allows, of the session.
-. Geometry does not drift across workspace switches, resolution changes or
-  monitor hot-plug.
-. Budgets: appears in under 100 ms, under 30 MB resident, under 1% idle CPU,
-  no network egress, no telemetry.
-. An unsupported platform produces a specific error naming the missing
-  primitive, never a silent no-op.
-. The feature degrades down a ladder rather than vanishing:
-  overlay -> pinned floating window -> terminal popup -> printed instructions.
-
-== How it is intended to work
-
-Every desktop already has *some* of the primitives; none has the composition.
-The plan is to compose them, per platform, and expose one behaviour:
-
-[cols="1,2,2",options="header"]
-|===
-| Layer | Mechanism | What it gives you
-
-| Overlay
-| A top-layer always-on-top surface fed by screen capture (desktop portal /
-  PipeWire where available), with no keyboard interactivity
-| Live content from *any* window or region, no focus theft
-
-| Pinned window
-| The compositor's own float + pin + geometry rules
-| Zero new dependencies; works on any window the compositor controls
-
-| Terminal popup
-| A multiplexer popup bound to one chord
-| Reference and logs on machines where no GUI capture is permitted, including
-  over SSH
-
-| Instructions
-| Printed, copy-pasteable setup for platforms this tool does not support
-| Honest failure instead of a broken promise
-|===
-
-== Platform support
-
-Deliberately blank until verified. A row gets a tick only when the acceptance
-criteria above pass on a real machine, with the version recorded.
-
-[cols="1,1,3",options="header"]
-|===
-| Platform | Status | Notes
-
-| Linux, wlroots-family compositors (sway, Hyprland, river)
-| unknown
-| Most promising: window listing, layer surfaces and capture are all exposed
-
-| Linux, GNOME
-| unknown
-| Capture only via the desktop portal; always-on-top needs an extension
-
-| Linux, KDE Plasma
-| unknown
-| Capture via the portal; compositor rules cover the pinned-window layer
-
-| Linux, X11
-| unknown
-| Capture and always-on-top are straightforward; the platform is on its way out
-
-| macOS
-| unknown
-| Video-only picture-in-picture, or a native always-on-top window; no capture of
-  other applications without a permission prompt
-
-| Windows
-| unknown
-| Per-window capture exists; always-on-top needs a native helper
-
-| Anywhere over SSH
-| unknown
-| Terminal popup layer only
-|===
-
-== Design principles
-
-* *Interruption is the failure mode.* Every interaction is one chord; nothing
-  opens a dialog at the moment you are trying to concentrate.
-* *The overlay is furniture, not an application.* It has no taskbar entry, no
-  focus, no notifications, and no title you have to read.
-* *Nothing is captured without consent.* No screen content leaves the machine,
-  ever; no network code ships in the first release.
-* *Fail loudly, degrade gracefully.* An unsupported platform is a message, not a
-  no-op.
-* *Compose, don't reimplement.* If a compositor, portal or existing tool already
-  does a layer well, wrap it -- and pin the version we tested.
+* this README -- the problem and the behaviour;
+* link:docs/proposals/INTERACTION-MODEL.adoc[the interaction model] -- states,
+  triggers, settings, accessibility parity, what each platform can actually do;
+* link:docs/proposals/IMPLEMENTATION-LANGUAGE.adoc[the implementation language
+  analysis] -- why the interim is plain JavaScript, why ReScript is not an
+  option, and what AffineScript needs before it can take over;
+* link:docs/TECHNICAL-CONFORMANCE.adoc[the technical statement of conformance]
+  -- the measurable definition of done, kept out of this document on purpose.
 
 == Getting involved
 
-Questions, bug reports and "this is the wrong shape" arguments are all welcome;
-the fastest way in is an issue that names your desktop, its version, and what
-you were trying to keep an eye on.
-
-The open questions blocking the first line of code are listed at the end of
-link:docs/proposals/HFSGTFOOMW-ASSESSMENT.adoc[the assessment]: primary
-platform, dominant content type, personal tool versus published product, and
-build versus adopt.
-
-== Where to go next
-
-* link:docs/proposals/HFSGTFOOMW-ASSESSMENT.adoc[Assessment and solution
-  options] -- what the repository is, what the problem is, and seven ways to
-  address it, with effort and risk.
-* link:docs/architecture/REPOSITORY-MAP.adoc[Repository map] -- generated from
-  the tree, so it cannot drift.
-* link:docs/status/ROADMAP.adoc[Roadmap] -- milestones and next actions. Still
-  the template's until this repository is instantiated.
-* link:CONTRIBUTING.adoc[Contributing] -- and note that the estate's language
-  policy applies: no Python, Go, TypeScript, ReScript, Nix or AGPL; JavaScript
-  runs on Bun.
+The most useful contribution right now is a *collision report*: which site, which
+page, which control the floating window covered, and what you had to do about it.
+That is the raw material the avoidance rules are built from. Open an issue with
+the URL pattern and the element you were reaching for.
 
 == Licence
 
-Code, configuration and scripts are
-link:LICENSE.adoc[Mozilla Public License 2.0] (`MPL-2.0`); prose documentation is
-`CC-BY-SA-4.0`. Both texts live in `LICENSES/`, and per-file
-`SPDX-License-Identifier` headers are authoritative. Long-term attribution uses
-Quantum-Safe Provenance -- see
-link:docs/legal/EXHIBIT-B-QUANTUM-SAFE.txt[the Quantum-Safe Provenance exhibit].
+Code, configuration and scripts are link:LICENSE.adoc[Mozilla Public License 2.0]
+(`MPL-2.0`); prose documentation is `CC-BY-SA-4.0`. Both texts live in
+`LICENSES/`, and per-file `SPDX-License-Identifier` headers are authoritative.
