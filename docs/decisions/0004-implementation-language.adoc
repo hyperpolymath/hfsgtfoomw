@@ -1,0 +1,94 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Architecture Decision Record: 0004-implementation-language
+:toc:
+
+== 0004. Implementation language: AffineScript, with the userscript target as its prerequisite
+
+Date: 2026-10-31
+
+=== Status
+
+Accepted (owner decision, 2026-10-31). Supersedes nothing.
+
+=== Context
+
+The project has two delivery vehicles -- a userscript for the page, and a
+desktop app for a real always-on-top window -- and the estate's language policy
+governs both.
+
+The policy denies *Nix, Python, Go, TypeScript, ReScript and AGPL*, permits
+plain JavaScript with Bun first among runtimes, and names AffineScript as the
+migration target for TypeScript- and ReScript-shaped code. ReScript was
+considered and rejected by that policy, not by preference; the estate's existing
+userscript collection (`grimrepo-scripts`) is written in ReScript and is
+therefore itself on the migration path.
+
+AffineScript v0.2 is early and experimental. It compiles to WebAssembly, ships a
+Bun-ESM JavaScript host backend whose output remains browser-importable when it
+uses only browser-provided externs, and already carries a browser DOM story
+(`stdlib/Dom.affine`, the `affinescript-dom` runtime, `affinescript-tea`). What
+it does not yet have is a *userscript-shaped* delivery target: one non-module
+file, manager bindings, and a proven story for WebAssembly under a page CSP.
+
+Two estate repositories bear on the decision:
+
+* `metadatastician/gossamer` -- a resource-aware desktop shell for web front ends
+  (Tauri/Electron-style, Zig with an Idris2 ABI, linear types, permission checks
+  at compile time). It already exposes always-on-top; click-through is not in it
+  yet. It is the natural vehicle for the *app* half, rather than a bespoke
+  WebView2 shell.
+* `hyperpolymath/affinescript-vite` -- a Vite plugin whose demo is the
+  `road-skate` game. It shows the current browser path: `.as` compiles to a
+  **WasmGC** module, imported as an **ES module**, initialised through a TEA
+  program handle. That is a bundler path, not a userscript path, and the plugin's
+  `package.json` declares **AGPL-3.0-or-later**, which the estate denies; it is
+  reference material, not a dependency.
+
+=== Decision
+
+1. *AffineScript is the implementation language* for both vehicles. No
+   TypeScript, no ReScript, no Python, no Go.
+2. The userscript is built with AffineScript's userscript target once it exists.
+   Until then, code is written in the four-file shape in
+   link:../proposals/IMPLEMENTATION-LANGUAGE.adoc[the language analysis]
+   (pure geometry, pure state machine, DOM adapter, manager adapter) so the port
+   is transcription rather than rewrite -- and so the same shape can be validated
+   in plain JavaScript if a release is needed before the target lands.
+3. The app is built on *gossamer*, not on a bespoke shell. Window capabilities
+   gossamer lacks (click-through, an opacity floor, cross-display placement)
+   are contributed upstream rather than reimplemented here, because a private
+   copy of a window layer is exactly the kind of drift this estate exists to
+   prevent.
+4. The estate's existing userscripts (`grimrepo-scripts`: `GrimCore` with its GM
+   API bindings and UI helpers, `AibdpChecker`, `GitlabEnhanced`, `A11yOverlay`,
+   `DarkMode`) are treated as prior art to port, not as a dependency to call.
+   Their manager-binding surface is the checklist the AffineScript target must
+   cover.
+
+=== Consequences
+
+==== Positive
+
+* One language, one proof story, and resource discipline (no leaked listeners,
+  observers or animation handles) becomes a type error rather than a habit.
+* The userscript work pulls the AffineScript userscript target into existence,
+  which the ReScript userscripts will need anyway when they migrate.
+* Reusing gossamer means the app inherits compile-time permission and handle
+  checking, and the estate keeps one desktop shell instead of two.
+
+==== Negative
+
+* The project is blocked on AffineScript's userscript target for its first
+  release. That is a real dependency on another repository's schedule; the
+  fallback shape in Decision 2 exists to keep a release possible, but it is a
+  fallback, not a plan.
+* WasmGC narrows the browser floor (modern Chromium, Firefox 120-class and
+  later) if the target keeps WasmGC output. That must be measured and stated in
+  the conformance matrix before any release claim.
+* gossamer upstream work is now on this project's critical path for the app half.
+
+==== Neutral
+
+* The `azraels`/`grimrepo-scripts` naming stays where it is; this repository does
+  not adopt it, and does not rename anyone else's work.

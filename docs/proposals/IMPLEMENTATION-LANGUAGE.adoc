@@ -3,11 +3,16 @@
 = Implementation language
 :toc:
 :toc-placement: preamble
-:status: DRAFT
+:status: DECIDED -- see link:../decisions/0004-implementation-language.adoc[ADR-0004]
 
 What this project is written in, what it cannot be written in, and what has to
 exist in AffineScript before AffineScript can take over. The last section is a
 work order, not a wish list.
+
+The decision is recorded in link:../decisions/0004-implementation-language.adoc[ADR-0004]:
+*AffineScript for both vehicles*, with the userscript target as the prerequisite
+for the first release, the app built on gossamer, and the four-file shape below
+as the fallback rather than the plan.
 
 == 1. The constraint
 
@@ -31,19 +36,20 @@ on day one.
 
 [cols="1,1,2",options="header"]
 |===
-| Vehicle | Language today | Language later
+| Vehicle | Language | Shell or packaging
 
 | Userscript
-| Plain JavaScript, one file, built by Bun into a single IIFE with a userscript
-  metadata banner. No framework: the DOM is the framework.
-| AffineScript, once it can emit a single-file browser bundle with userscript
-  manager bindings (§4)
+| *AffineScript*, targeting a single-file browser bundle with userscript manager
+  bindings (§4)
+| Bun-built IIFE with a userscript metadata banner. No framework: the DOM is the
+  framework.
 
 | App
-| JavaScript front end in a WebView2 shell; the window behaviour (topmost,
-  alpha, click-through, cross-display move) in a small Rust or Zig native layer
-| AffineScript for the effect-typed core, if the WASM target suits a native
-  host -- and the estate already carries a typed-wasm seam for exactly that
+| *AffineScript* for the core and the UI
+| link:https://github.com/metadatastician/gossamer[gossamer], the estate's
+  resource-aware desktop shell (Zig + Idris2 ABI, linear types, compile-time
+  permission checks). Window behaviour gossamer lacks is contributed upstream,
+  not reimplemented here.
 |===
 
 The split matters more than the language: *browser control stops at the page*.
@@ -52,17 +58,21 @@ window; the app owns a real window and nothing of the page's DOM. Writing that
 boundary down is why the language question can be answered per vehicle instead
 of once.
 
-== 3. Why plain JavaScript first is not a compromise
+== 3. The fallback shape, if the target is not ready
 
-* It is the only language a userscript can be *today*, in every manager, with no
-  build step required by the publisher and no runtime download.
-* The interesting work here is geometry, pointer physics and event discipline --
-  about 1,500 lines. A user's install experience matters more than the type
-  system at this size.
-* Porting is mechanical *if the code is shaped for it*: pure functions for
-  geometry and state transitions, one thin adapter for DOM and storage, no
-  classes with inheritance, no framework. That shape is also the shape
-  AffineScript wants, so the port is a transcription rather than a rewrite.
+The decision is AffineScript. The fallback exists only so that a release is not
+held hostage to another repository's schedule, and it is deliberately shaped so
+that the port is a transcription.
+
+* A userscript must be *one file, no build step required by the publisher* -- that
+  is what makes it installable in every manager, with no runtime download.
+* The interesting work is geometry, pointer physics and event discipline --
+  about 1,500 lines. Getting it wrong in a language without affine ownership is
+  exactly the leak class the language exists to prevent, which is why this is a
+  fallback and not the plan.
+* The shape: pure functions for geometry and state transitions, one thin adapter
+  for DOM and storage, no inheritance, no framework. That is also the shape
+  AffineScript wants, so the port is transcription.
 
 == 4. What AffineScript is missing for this
 
@@ -170,10 +180,67 @@ approximating -- this is meant to be packaging, and a semantic surprise is a
 finding worth having.
 ----
 
-== 6. If it is not ready in time
+== 6. Prior art in the estate (and one licence trap)
 
-Ship the userscript in plain JavaScript, in the shape §3 describes, and port
-later. The interfaces that make the port cheap are:
+Three existing repositories bear directly on this project. They were checked
+rather than assumed, and each has a different verdict.
+
+=== gossamer (`metadatastician/gossamer`) -- adopt
+
+A resource-aware desktop shell for web front ends: Tauri/Electron-shaped
+packaging where webview handles, IPC shapes and permissions are checked at
+compile time (Zig core, Idris2 ABI, linear types, no garbage collector). This is
+the app half's shell.
+
+Its window surface already covers part of what the interaction model needs:
+`alwaysOnTop` is present in the source. *Click-through is not* (`click_through`
+has no hits, and neither do the Win32 extended-style names), and per-window
+opacity needs checking per platform. So the app's most distinctive behaviours
+are a contribution to gossamer, not a bespoke layer beside it -- which is the
+estate's own "solutions at source" rule, applied to ourselves.
+
+=== affinescript-vite (`hyperpolymath/affinescript-vite`) -- reference only, not a dependency
+
+Despite the name it is a Vite *plugin* whose demo is the `road-skate` game, and
+it answers the question "how does AffineScript reach a browser today". The
+answer, from its own files:
+
+* `.as` compiles to a **WasmGC** module (`game/main.js` imports `./main.as` and
+  calls `roadSkate.init({node})` -- a TEA program handle);
+* the page loads it as an **ES module** through `<script type="module">`, bundled
+  by Vite;
+* the build is driven by **Deno**.
+
+That is a bundler path, not a userscript path: a userscript has no `import`, no
+module loader and no bundler at install time. It is still the most useful thing
+in the estate for the work order in §5, because it proves the compiler can emit
+something a browser runs, and it shows exactly which two things are missing
+(single-file emit, and a non-module runtime).
+
+*Licence trap:* its `package.json` declares **AGPL-3.0-or-later**. The estate
+denies AGPL, and this repository is MPL-2.0. So: read it, do not copy from it, and
+do not add it as a dependency. That mismatch looks like an accident worth fixing
+upstream in its own right.
+
+=== `grimrepo-scripts` -- the checklist, and a migration
+
+`grim-repo` is the maker; its userscripts live separately, in
+`gitlab.com/extensions-library/monkey-scripts/grimrepo-scripts` (the ones known
+in the estate as *azraels*): `GrimCore` (GM API bindings, DOM utilities,
+storage, HTTP, UI), `AibdpChecker`, `GitlabEnhanced`, `A11yOverlay`, `DarkMode`.
+They are ReScript-first, which is the language the policy denies and the very
+surface AffineScript's `jaffascript` face exists to replace.
+
+Two consequences:
+
+* *`GrimCore` is the requirements list* for §5 item 2. It already solved GM
+  bindings, storage and UI helpers in a userscript context; the AffineScript
+  target should be able to express the same surface before this project depends
+  on it.
+* *Do not couple to it.* Calling into a ReScript bundle would import the denied
+  language into a build that forbids it. It is prior art to port, not a library
+  to require.
+
 
 * `geometry.pure.js` -- collision, clearance and settling maths, no DOM;
 * `state.machine.js` -- the states of the interaction model and their legal

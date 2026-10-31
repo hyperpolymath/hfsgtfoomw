@@ -110,6 +110,12 @@ link:docs/proposals/INTERACTION-MODEL.adoc#mechanisms[the mechanisms section].
   above the page. This is where "float it over Excel while you work in Word"
   becomes possible.
 
+Both are written in *AffineScript*, and the app is built on
+link:https://github.com/metadatastician/gossamer[gossamer], the estate's
+resource-safe desktop shell. Why that is the right split, what gossamer still
+needs, and what AffineScript's userscript target must add are recorded in
+link:docs/decisions/0004-implementation-language.adoc[ADR-0004].
+
 A browser cannot move, fade or click-through its own picture-in-picture window:
 that window belongs to the browser and the OS. So the choreography has to live
 in one of the two vehicles above. Saying that plainly is more useful than
