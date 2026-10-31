@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<!--
+  SPDX-License-Identifier: MPL-2.0
+  SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+
+  Acceptance fixture for hfsgtfoomw.
+
+  One page, no network, no build. Every acceptance criterion that can be watched
+  has something on this page that can be watched: the hazards are planted on
+  purpose, and the probe reports what the engine will actually allow. Open it
+  from the filesystem or serve it locally; nothing here requests anything.
+
+  Why a fixture rather than "try it on a real site": an observation is only
+  evidence if the next run can be compared with it, and a live site changes
+  underneath the observer. See docs/acceptance/RUN-SHEET.adoc.
+-->
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>hfsgtfoomw acceptance fixture</title>
+<style>
+  :root { color-scheme: light dark; --ink:#111; --paper:#fff; --muted:#666;
+          --edge:#c00; --ok:#070; }
+  @media (prefers-color-scheme: dark) {
+    :root { --ink:#eee; --paper:#151515; --muted:#aaa; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font:16px/1.5 system-ui, sans-serif; color:var(--ink);
+         background:var(--paper); }
+  header { padding:1rem 1.25rem; border-bottom:1px solid #8884; }
+  h1 { font-size:1.1rem; margin:0 0 .25rem; }
+  header p { margin:0; color:var(--muted); font-size:.85rem; }
+  main { display:grid; grid-template-columns: 1fr 22rem; gap:1rem; padding:1rem; }
+  section { border:1px solid #8884; border-radius:.5rem; padding:.75rem 1rem; }
+  h2 { font-size:.95rem; margin:.25rem 0 .5rem; }
+  .hazard { position:relative; }
+  .hazard::after { content:"hazard"; position:absolute; top:.25rem; right:.5rem;
+                   font-size:.65rem; letter-spacing:.08em; text-transform:uppercase;
+                   color:var(--edge); }
+
+  /* AC-2/AC-3: the resting region of a bottom-right float holds a live input. */
+  #region-rest { min-height:14rem; display:flex; align-items:flex-end;
+                 justify-content:flex-end; }
+  #rest-pad { width:18rem; height:9rem; border:2px dashed var(--edge);
+              border-radius:.75rem; display:flex; flex-direction:column;
+              gap:.5rem; align-items:center; justify-content:center;
+              text-align:center; padding:.5rem; }
+  #rest-pad label { font-size:.8rem; }
+
+  /* AC-4: a button directly under where the chip lands. */
+  #cap-btn { margin-top:.75rem; padding:.6rem 1rem; font:inherit; }
+
+  /* Moving target: content that scrolls under a fixed float. */
+  #scroll { height:16rem; overflow:auto; border:1px solid #8884; border-radius:.5rem; }
+  #scroll ol { margin:0; padding:.5rem .5rem .5rem 2.5rem; }
+  #scroll li { padding:.35rem 0; border-bottom:1px dotted #8883; }
+
+  /* AC-6: an element pinned to the viewport edge, and a handle-sized target. */
+  #edge-marker { position:fixed; right:0; top:50%; width:6px; height:6rem;
+                 background:var(--edge); border-radius:2px 0 0 2px; }
+  #handle { position:fixed; right:0; bottom:0; width:4px; height:4rem;
+            background:var(--ok); }
+
+  /* AC-9: something visibly animating, so a dropped frame is a dropped frame. */
+  #sweep { width:100%; height:.5rem; background:linear-gradient(90deg,#8882,#8888); }
+  #sweep i { display:block; height:100%; width:2rem; background:var(--ok); }
+
+  table { border-collapse:collapse; width:100%; font-size:.8rem; }
+  td, th { text-align:left; padding:.2rem .4rem; border-bottom:1px solid #8883; }
+  code { font-size:.85em; }
+  #click-log { font:12px/1.4 ui-monospace, monospace; max-height:8rem; overflow:auto;
+               border:1px solid #8884; border-radius:.35rem; padding:.35rem; }
+  .yes { color:var(--ok); font-weight:600; }
+  .no { color:var(--edge); font-weight:600; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>hfsgtfoomw acceptance fixture</h1>
+  <p>Planted hazards for AC-1 … AC-11. Nothing on this page fetches anything.
+     Record what you see in <code>docs/acceptance/</code>.</p>
+</header>
+
+<main>
+  <div>
+    <section class="hazard" id="region-rest">
+      <div>
+        <h2>AC-2 · AC-3 — a live field in the resting region</h2>
+        <div id="rest-pad">
+          <label for="hot-input">Type here, then move the float over this field</label>
+          <input id="hot-input" type="text" value="" placeholder="focus must not move" autocomplete="off">
+          <button id="cap-btn" type="button">The chip must not press this</button>
+          <span id="btn-state" aria-live="polite">button not pressed</span>
+        </div>
+      </div>
+    </section>
+
+    <section style="margin-top:1rem">
+      <h2>Moving target — content scrolling under the float</h2>
+      <div id="scroll" tabindex="0" aria-label="Scrollable list of rows">
+        <ol id="rows"></ol>
+      </div>
+    </section>
+
+    <section style="margin-top:1rem">
+      <h2>AC-9 — motion and frame budget</h2>
+      <div id="sweep"><i></i></div>
+      <table>
+        <tr><th>Frames in the last second</th><td id="fps">measuring…</td></tr>
+        <tr><th>Longest frame</th><td id="longest">measuring…</td></tr>
+      </table>
+    </section>
+
+    <section style="margin-top:1rem">
+      <h2>Both PiP paths</h2>
+      <video id="clip" width="320" height="180" muted playsinline
+             poster="" aria-label="Test clip"></video>
+      <table>
+        <tr><th><code>documentPictureInPicture</code></th><td id="probe-dpip">probing…</td></tr>
+        <tr><th><code>requestPictureInPicture</code></th><td id="probe-vpip">probing…</td></tr>
+        <tr><th>Document PiP: opens from this page</th><td id="probe-open">not attempted</td></tr>
+      </table>
+      <p style="font-size:.8rem;color:var(--muted)">
+        The 320×180 <code>video</code> above is deliberately empty: this fixture
+        ships no media, because a fixture that downloads a clip is a fixture that
+        needs the network. Point it at a local file to exercise the classic path,
+        or use the Document PiP probe, which needs no media at all.
+      </p>
+    </section>
+  </div>
+
+  <aside>
+    <section>
+      <h2>Probe</h2>
+      <table>
+        <tr><th>User agent</th><td id="ua">—</td></tr>
+        <tr><th>Viewport</th><td id="vp">—</td></tr>
+        <tr><th>Pointer type</th><td id="ptr">—</td></tr>
+        <tr><th>Reduced motion</th><td id="motion">—</td></tr>
+        <tr><th>Secure context</th><td id="secure">—</td></tr>
+      </table>
+    </section>
+
+    <section style="margin-top:1rem">
+      <h2>AC-4 — click log</h2>
+      <p style="font-size:.8rem;margin:0 0 .35rem;color:var(--muted)">
+        Every click that reaches this page is logged. If the chip is over the
+        button and the button logs a click, tap-through happened.</p>
+      <div id="click-log" aria-live="polite"></div>
+    </section>
+
+    <section style="margin-top:1rem">
+      <h2>AC-6 — edge handles</h2>
+      <p style="font-size:.8rem;color:var(--muted)">
+        The red bar is the pinned edge marker; the green strip is a 4 px handle.
+        A banished float must leave at least a handle of this size reachable.</p>
+    </section>
+  </aside>
+</main>
+
+<div id="edge-marker" aria-hidden="true"></div>
+<div id="handle" aria-hidden="true"></div>
+
+<script>
+// SPDX-License-Identifier: MPL-2.0
+"use strict";
+
+// ── rows: enough content to scroll under a fixed float ───────────────────────
+const rows = document.getElementById("rows");
+for (let i = 1; i <= 60; i += 1) {
+  const li = document.createElement("li");
+  li.textContent = `Row ${i} — put the float over this line and scroll`;
+  rows.appendChild(li);
+}
+
+// ── AC-4: does a click reach the page? ──────────────────────────────────────
+const log = document.getElementById("click-log");
+const note = (text) => {
+  const line = document.createElement("div");
+  const now = new Date().toISOString().slice(11, 23);
+  line.textContent = `${now}  ${text}`;
+  log.prepend(line);
+};
+document.addEventListener("click", (event) => {
+  const id = event.target && event.target.id ? event.target.id : event.target.nodeName;
+  note(`click → ${id}`);
+}, true);
+
+const capBtn = document.getElementById("cap-btn");
+const btnState = document.getElementById("btn-state");
+capBtn.addEventListener("click", () => {
+  btnState.textContent = "button WAS pressed — tap-through or a miss";
+  btnState.style.color = "var(--edge)";
+  btnState.style.fontWeight = "600";
+});
+
+// ── AC-2: if the float steals focus, this field goes blurred ────────────────
+const hot = document.getElementById("hot-input");
+hot.addEventListener("blur", () => note("focus left the text field"));
+hot.addEventListener("focus", () => note("focus returned to the text field"));
+
+// ── AC-9: frame budget, sampled continuously ────────────────────────────────
+let frames = 0, longest = 0, last = performance.now(), windowStart = last;
+const sweep = document.querySelector("#sweep i");
+const fpsEl = document.getElementById("fps");
+const longestEl = document.getElementById("longest");
+function tick(t) {
+  const delta = t - last;
+  last = t;
+  frames += 1;
+  if (delta > longest) longest = delta;
+  if (t - windowStart >= 1000) {
+    fpsEl.textContent = String(frames);
+    longestEl.textContent = `${longest.toFixed(1)} ms`;
+    frames = 0;
+    longest = 0;
+    windowStart = t;
+  }
+  // A bar that moves every frame: a dropped frame is visible, not inferred.
+  const width = (t % 1000) / 1000 * (sweep.parentElement.clientWidth - 32);
+  sweep.style.marginLeft = `${width}px`;
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+
+// ── probes ──────────────────────────────────────────────────────────────────
+const mark = (el, ok, text) => {
+  el.textContent = text;
+  el.className = ok ? "yes" : "no";
+};
+mark(document.getElementById("probe-dpip"),
+     "documentPictureInPicture" in window,
+     "documentPictureInPicture" in window ? "available" : "absent");
+mark(document.getElementById("probe-vpip"),
+     typeof HTMLVideoElement !== "undefined" &&
+       "requestPictureInPicture" in HTMLVideoElement.prototype,
+     "requestPictureInPicture" in (HTMLVideoElement.prototype || {}) ? "available" : "absent");
+
+const openProbe = document.getElementById("probe-open");
+if ("documentPictureInPicture" in window) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.textContent = "Request a Document PiP window";
+  btn.addEventListener("click", async () => {
+    try {
+      const win = await window.documentPictureInPicture.requestWindow({ width: 320, height: 200 });
+      win.document.body.innerHTML =
+        '<p style="font:14px system-ui">This window is ours. Can you move it? ' +
+        'Record what happens in the run sheet.</p>';
+      openProbe.textContent = `opened at ${win.screenX},${win.screenY} — move it with the title bar`;
+      openProbe.className = "yes";
+    } catch (err) {
+      openProbe.textContent = `refused: ${err.name}: ${err.message}`;
+      openProbe.className = "no";
+    }
+  });
+  openProbe.textContent = "";
+  openProbe.appendChild(btn);
+}
+
+document.getElementById("ua").textContent = navigator.userAgent;
+const vp = () => `${window.innerWidth}×${window.innerHeight} @${window.devicePixelRatio}x`;
+document.getElementById("vp").textContent = vp();
+window.addEventListener("resize", () => { document.getElementById("vp").textContent = vp(); });
+document.getElementById("ptr").textContent =
+  window.matchMedia("(pointer: coarse)").matches ? "coarse" : "fine";
+document.getElementById("motion").textContent =
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "reduce" : "no-preference";
+document.getElementById("secure").textContent = String(window.isSecureContext);
+</script>
+</body>
+</html>

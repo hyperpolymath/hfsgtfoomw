@@ -159,6 +159,8 @@ require_file tests/workflows/check_ijson_jcs_test.sh && \
   run_lane "I-JSON/JCS Silence + Firing self-tests" bash tests/workflows/check_ijson_jcs_test.sh
 require_file tests/workflows/squabble_gate_test.sh && \
   run_lane "CICD-Squabbler & required-context Silence + Firing self-tests" bash tests/workflows/squabble_gate_test.sh
+require_file tests/workflows/check_egress_test.sh && \
+  run_lane "Egress gate Silence + Firing self-tests" bash tests/workflows/check_egress_test.sh
 require_file tests/shape/check_root_shape_test.sh && \
   run_lane "Root shape Silence + Firing self-tests" bash tests/shape/check_root_shape_test.sh
 require_file www/tests/run-all.sh && \

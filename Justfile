@@ -188,6 +188,12 @@ ijson-check:
 adoc-macros:
     bash scripts/check-adoc-macros.sh .
 
+# Check a userscript for any network surface (AC-9, `egress = "none"`): header
+# directives inside the metadata block, and body primitives on comment-stripped
+# code. 0 clean, 1 finding, 2 setup. The behavioural proof is the run sheet.
+check-egress file:
+    bash scripts/check-egress.sh "{{file}}"
+
 # Run readiness tests (Component Readiness Grade: D/C/B)
 readiness:
     # TODO: Replace with your readiness test command. Examples:
