@@ -248,6 +248,53 @@ in parallel; T1's *runs* need the fixture; T4 and T3 are drafts that need only
 words; T5 needs the userscript target to exist before it is worth asking for
 click-through; T6 is yours whenever you want it and blocks nothing.
 
+=== 5.1 Where each thread actually stands
+
+Four of the six are delivered as artifacts. Two of them are delivered only up to
+the point where a human has to be in the room, and this table says which.
+
+[cols="1,3,2",options="header"]
+|===
+| Thread | Artifact, with a link | What is still owed
+
+| T1
+| link:../acceptance/RUN-SHEET.adoc[the run sheet] and
+ link:../../tests/acceptance/fixture/index.html[the fixture page], both landed in
+ link:https://github.com/hyperpolymath/hfsgtfoomw/pull/4[#4]
+| The recordings themselves. One per browser on the priority platforms, made by a
+ person at a display. Until then AC-1..AC-11 read *blocked*, not *pass*.
+
+| T2
+| `scripts/check-egress.sh`, its Silence-and-Firing self-test, a suite lane and
+ `just check-egress FILE`, all in
+ link:https://github.com/hyperpolymath/hfsgtfoomw/pull/4[#4]
+| Nothing. It gates the userscript sources that do not exist yet, so today it
+ passes over an empty set — which is the honest outcome, not a working gate.
+
+| T3
+| link:https://github.com/hyperpolymath/rsr-template-repo/issues/268[#268] and
+ link:https://github.com/hyperpolymath/rsr-template-repo/issues/269[#269]
+| Triage, and the maintainer's fixes upstream.
+
+| T4
+| link:https://github.com/hyperpolymath/checky-monkey/issues/101[checky-monkey#101],
+ carrying the manifest shape, the two defects and the two questions
+| Answers from that repository's owner, then the first submission.
+
+| T5
+| link:https://github.com/metadatastician/gossamer/issues/200[gossamer#200],
+ carrying AC-6, AC-7, AC-9 and the fail-closed requirement
+| The userscript target, before the ask is worth making.
+
+| T6
+| nothing; this one was never the agent's to do
+| Topics, the `gv-clade-index` entry, the first Greasy Fork upload.
+|===
+
+Two things this table does not claim: that any lane was observed on a real
+browser, and that a gate over an empty directory is evidence about the script
+that will one day sit in it.
+
 == 6. Decisions only you can make
 
 . *Platform reach.* The matrix says Firefox shares the first row with Edge and
