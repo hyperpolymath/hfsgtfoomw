@@ -21,7 +21,7 @@
     # ──────────────────────────────────────────────────────────────────────
     # Primary application service
     # ──────────────────────────────────────────────────────────────────────
-    "hfsgtfoomw": {
+    hfsgtfoomw: {
       build: {
         context: "..",
         dockerfile: "build/container/Containerfile",
@@ -74,7 +74,7 @@
         "rokur-audit:/var/log/rokur",
       ],
       depends_on: {
-        "hfsgtfoomw": {
+        hfsgtfoomw: {
           condition: "service_healthy",
         },
       },
@@ -128,7 +128,7 @@
     },
   },
   volumes: {
-    "hfsgtfoomw-data": null,
+    hfsgtfoomw-data: null,
     rokur-audit: null,
   },
 }
