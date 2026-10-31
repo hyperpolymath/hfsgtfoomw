@@ -34,13 +34,13 @@ platform, a user, or a definition of done.
 | It is the RSR template, uninitialised
 | 735 unsubstituted `{{PLACEHOLDER}}` tokens across 101 files; `README.adoc`
   still carries the template admonition and `just repo-init`; `CITATION.cff`,
-  badges, `CODEOWNERS`, `sonar-project.properties` are all still `{{OWNER}}` /
-  `{{REPO}}`.
+  badges, `CODEOWNERS`, `sonar-project.properties` are all still `hyperpolymath` /
+  `hfsgtfoomw`.
 
 | It still believes it is the template
-| The deed is `rsr-template-repo_chora.deed`; `:canonical-name
-  "rsr-template-repo"`, `:repo-uuid #u5"github.com/hyperpolymath/rsr-template-repo"`,
-  `:prefixed-name "rm-rsr-template-repo"`. The deed's own comments record that
+| The deed is `hfsgtfoomw_chora.deed`; `:canonical-name
+  "hfsgtfoomw"`, `:repo-uuid #u5"github.com/hyperpolymath/hfsgtfoomw"`,
+  `:prefixed-name "rm-hfsgtfoomw"`. The deed's own comments record that
   this exact fault previously made minted repos tell arriving agents they *were*
   the template (corrected in chronicles-of-slavia and scaffoldia, 2026-07-16).
 
@@ -153,7 +153,7 @@ it is hygiene, and none of it is speculative.
   than the repo name (`pipctl`, `pips`, `peek`, `outtatheway`).
 
 *I would do Option 0 first even if every product arm below is rejected*, because
-right now an arriving agent is told it is in `rsr-template-repo` and will act
+right now an arriving agent is told it is in `hfsgtfoomw` and will act
 accordingly.
 
 == 3. The solution arms

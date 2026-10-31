@@ -52,7 +52,7 @@ One control surface with the same behaviour everywhere:
 [IMPORTANT]
 ====
 *There is no code yet.* This repository is currently the
-https://github.com/hyperpolymath/rsr-template-repo[RSR template] scaffolded for
+https://github.com/hyperpolymath/hfsgtfoomw[RSR template] scaffolded for
 this project: CI/CD, machine-readable metadata, an ABI/FFI seam and governance
 scaffolding are in place, and the git history is the template's. No window has
 been moved by anything in this tree.

@@ -120,6 +120,9 @@ BLOCK_DELIM_RE='^(-{4,}|\.{4,}|\+{4,}|/{4,}|={4,}|\*{4,}|_{4,})$'
 
 for f in "${FILES[@]}"; do
     rel="${f#"$REPO_ROOT"/}"
+    # A file git still lists but the work tree no longer has is a staged or
+    # pending deletion, not a document to read.
+    if [ ! -f "$f" ]; then continue; fi
     if is_allowed_file "$rel"; then continue; fi
 
     hit=0
