@@ -207,7 +207,11 @@ wiring_checks() {
     fi
 
     echo "  --- the badge URL and the orphan guarantee survive ---"
-    has "README still reads the stable raw URL" 'raw\.githubusercontent\.com/\{\{OWNER\}\}/\{\{REPO\}\}/governance-badges/badges/k9\.json' "$README"
+    # The template's README carries the token form; a minted child carries the
+    # substituted one. Both are the same URL and both must be accepted, or the
+    # check is unsatisfiable in every child of the template.
+    has "README still reads the stable raw URL" \
+        'raw\.githubusercontent\.com/(\{\{OWNER\}\}/\{\{REPO\}\}|[A-Za-z0-9._-]+/[A-Za-z0-9._-]+)/governance-badges/badges/k9\.json' "$README"
     has "the orphan commit is built with no parents" 'parents: \[\]' "$HELPER"
     hasnt "the helper never names a source branch as a ref" 'refs/heads/(main|master)' "$HELPER"
 

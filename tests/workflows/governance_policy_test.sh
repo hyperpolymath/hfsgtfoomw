@@ -189,7 +189,7 @@ console.log("PASS: new proof instructions require needs, verification, rechecks 
 // bump or retaining the previous gates hash would misidentify the canon.
 // Update this expectation deliberately when adopting the next canon release.
 const field = (key) => execFileSync("bash", [resolve(root, "scripts/deed-field.sh"),
-  resolve(root, "rsr-template-repo_chora.deed"), "canon", key], { encoding: "utf8" }).trim();
+  resolve(root, "hfsgtfoomw_chora.deed"), "canon", key], { encoding: "utf8" }).trim();
 assert.deepEqual([field("version"), field("criteria-sha256"), field("gates-sha256")], [
   "2.1.3",
   "6a5aa8857bd0d0d58ef48827938ca17c251b6b854dacf59d306388d61694d82a",

@@ -1,0 +1,152 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= Architecture Decision Record: 0005-window-mechanism
+:toc:
+
+== 0005. The first target is a real floating window, built from Document Picture-in-Picture
+
+Date: 2026-10-31
+
+=== Status
+
+Accepted (owner decision, 2026-10-31). Supersedes nothing. Amends the platform
+matrix and the reading of AC-1 in
+link:../TECHNICAL-CONFORMANCE.adoc[TECHNICAL-CONFORMANCE].
+
+=== The question this answers
+
+The matrix's first row read "Windows + Firefox / Edge / Chrome (Tampermonkey-class
+manager)" with the note "in-page float only; the native PiP window is not
+controllable". That row can be read two ways, and the two readings need different
+code, different browsers and different acceptance criteria:
+
+. the web vehicle draws a float *inside the page*; or
+. the web vehicle puts its content into a *real always-on-top window* that the
+  browser owns and composites with the desktop.
+
+The owner chose the second: *a real floating window, requested through the
+Picture-in-Picture APIs, with Document Picture-in-Picture as the mechanism.*
+
+=== What each API actually grants
+
+Confirmed from the current compatibility record rather than from memory, because
+this is the fact the whole decision turns on:
+
+[cols="2,2,2,3",options="header"]
+|===
+| API | Where it exists | What it gives us | What it refuses
+
+| Document Picture-in-Picture
+| Chromium 116+ (Chrome, Edge, Opera, Brave, Vivaldi); Firefox 151+ (May 2026);
+  not Safari; not mobile
+| A real, always-on-top, OS-composited window that carries *our* DOM: our
+  controls, our styles, our states
+| Nothing about *position*. The browser owns where the window sits; script
+  cannot move it, fade it or make it click-through. One window per tab, and it
+  dies with the tab.
+
+| Classic video PiP (`requestPictureInPicture()`)
+| Chromium 70+; Safari; **not Firefox**, which offers a browser-level toggle with
+  no JS entry point
+| A floating window around one `<video>`
+| Only one element; no custom UI; same position limit
+|===
+
+The consequence, stated plainly: *choosing a real window does not make the
+window movable.* Moving, flinging, banishing and click-through remain
+impossible in every browser. What the decision buys is a window that survives
+tab switches, is composited above other applications, and contains markup we
+control — which is what "stop it getting in the way" actually needs on a
+single-monitor Windows desktop.
+
+=== Decision
+
+. *Primary mechanism:* Document Picture-in-Picture hosts the float. The page
+  requests it on one action; the window carries our own player, controls and
+  state affordances.
+. *Classic PiP is retained, not replaced.* Where Document PiP is absent
+  (Safari, mobile, Firefox below 151) the script falls back to the classic video
+  PiP if the engine has a JS entry point, and otherwise to the in-page float.
+  Where both exist, the video element inside our window may itself offer classic
+  PiP; whether that nesting works is engine-dependent, so the acceptance fixture
+  probes it rather than the design assuming it.
+. *Platform floor moves.* "Windows first" now means *Chromium 116+ and Firefox
+  151+*, with the other engines on the degradation ladder. A Windows machine
+  whose browser predates those versions is a fallback row, not a first-class one.
+. *The app vehicle keeps the geometry.* `gossamer` remains the only vehicle that
+  can move, fade and click through a window, because it owns a native one.
+
+=== What this changes in the acceptance criteria
+
+AC-3 (dodge), AC-5 (fling) and AC-6 (banish) are *window geometry*. No browser
+grants it. They therefore split:
+
+[cols="1,2,2",options="header"]
+|===
+| Criterion | Web vehicle (Document PiP / in-page float) | App vehicle (gossamer)
+
+| AC-1 working state
+| Passes: a real window, one action in, one action out
+| Passes
+
+| AC-2 no self-focus
+| Passes: a Document PiP window does not steal keyboard focus
+| Passes
+
+| AC-3 dodge on hover/caret
+| Fails at the window level. Restated as *reflow*: the content inside our window
+  shrinks or docks, and the page moves its own content out from under the window.
+  The invariant is that no interactive target sits beneath it once settled.
+| Passes as written
+
+| AC-4 hover-to-chip
+| Passes inside the window (we own the markup)
+| Passes
+
+| AC-5 fling
+| Fails. Restated as the page's choice of *where the window is asked to appear*,
+  which the browser may ignore.
+| Passes as written
+
+| AC-6 banish
+| Restated: the window is closed to a handle state, not moved to an edge.
+| Passes as written
+
+| AC-7 ghost / click-through
+| Ghost passes (alpha inside our own window); click-through does not exist.
+| Passes as written
+
+| AC-8 keyboard and announcements
+| Passes, and is strengthened: the window is a separate document with its own
+  focus order.
+| Passes
+
+| AC-9 budgets
+| Applies to the window's lifetime, which is now measurable independently of the
+  page.
+| Applies
+|===
+
+This split is the honest reading of the APIs, and it is the reason the matrix
+below now has more rows than platforms: a browser can appear twice, once for the
+window lane and once for the fallback lane.
+
+=== Consequences to accept
+
+* One window per tab. A user with three tabs in PiP has three windows; we cannot
+  show them one. Two floats on one page remain out of scope.
+* The window cannot be moved by us, so "get out of the way" is delivered by
+  shrinking content, closing, and letting the page yield space — not by travel.
+* Firefox below 151 is a fallback row even on Windows, so "priority Windows"
+  means a *browser version* floor, not an OS floor.
+* Safari and mobile keep the classic path and the in-page float only, and stay
+  documented rather than supported.
+
+=== What would reverse this
+
+If the acceptance fixture shows that the Document PiP window is unusable in the
+target workflow — for instance because the browser re-positions it on every
+screen change, or because a page CSP blocks the request — then the web vehicle
+falls back to the in-page float and the real-window claim moves entirely to
+`gossamer`. That is a testable outcome, and the fixture in
+link:../proposals/NEXT-WORK.adoc[NEXT-WORK] is where it gets tested.
