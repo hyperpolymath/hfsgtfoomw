@@ -232,21 +232,7 @@ jobs:
             echo "No converted YAML is left in this repository; nothing to check."
             exit 0
           fi
-          if ! bash "$RUNNER_TEMP/kyaml-format.sh" --check "${present[@]}"; then
-            # Name the change, not just the verdict. The gate's own message points
-            # at a formatter this runner cannot see, and the file that drifted is
-            # usually one a rewrite pass touched, so print the patch it wants.
-            tmpd="$(mktemp -d)"; body=""
-            for f in "${present[@]}"; do
-              cp "$f" "$tmpd/$(basename "$f")"
-              bash "$RUNNER_TEMP/kyaml-format.sh" "$tmpd/$(basename "$f")" >/dev/null 2>&1 || true
-              d="$(diff -u --label "a/$f" --label "b/$f" "$f" "$tmpd/$(basename "$f")" || true)"
-              if [ -n "$d" ]; then body="${body}${d}"$'\n'; fi
-            done
-            escaped="$(printf '%s' "$body" | sed -e 's/%/%25/g' -e 's/\r//g' | awk 'BEGIN{ORS=""} {printf "%s%%0A", $0}')"
-            echo "::error title=KYAML drift (apply this patch)::${escaped}"
-            exit 1
-          fi
+          bash "$RUNNER_TEMP/kyaml-format.sh" --check "${present[@]}"
       - name: Estate composite actions stay KYAML
         run: |
           set -euo pipefail

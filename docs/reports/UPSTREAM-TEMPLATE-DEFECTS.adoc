@@ -167,8 +167,9 @@ the same URL in the two shapes a tree can legitimately hold.
 kyaml-format: build/container/compose.yaml is not KYAML — run scripts/kyaml-format.sh build/container/compose.yaml
 ----
 
-The template writes `"{{SERVICE_NAME}}": {`, where the quotes are *required* (a
-scalar starting with `{` must be quoted). Substituting a plain name leaves the
+The template writes the service key as a quoted brace-delimited
+interpolation token, and the quotes are *required* there (a scalar starting with
+`{` must be quoted). Substituting a plain name leaves the
 quotes behind, and KYAML does not permit a quote that is not needed. The patch
 the formatter wants, printed by the gate's own diagnostic:
 
