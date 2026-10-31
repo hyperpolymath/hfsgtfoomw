@@ -22,9 +22,9 @@ import? "build/contractile.just"
 mod provision 'build/just/provision.just'
 
 # Project metadata — customize these
-project := "rsr-template-repo"
+project := "hfsgtfoomw"
 OWNER := "hyperpolymath"
-REPO := "rsr-template-repo"
+REPO := "hfsgtfoomw"
 version := "0.1.0"
 tier := "infrastructure"  # 1 | 2 | infrastructure
 
@@ -181,6 +181,18 @@ bench-check:
 # Check RFC 7493 (I-JSON) + RFC 8785 (JCS) canonical form across tracked JSON
 ijson-check:
     bash scripts/check-ijson-jcs.sh --enforce .
+
+# Check tracked .adoc for text that parses but is not a macro: an image with an
+# empty target (`image:[...]`) or a Markdown link (`[text](url)`). The render
+# gate cannot see either, because neither is a parse error.
+adoc-macros:
+    bash scripts/check-adoc-macros.sh .
+
+# Check a userscript for any network surface (AC-9, `egress = "none"`): header
+# directives inside the metadata block, and body primitives on comment-stripped
+# code. 0 clean, 1 finding, 2 setup. The behavioural proof is the run sheet.
+check-egress file:
+    bash scripts/check-egress.sh "{{file}}"
 
 # Run readiness tests (Component Readiness Grade: D/C/B)
 readiness:
@@ -595,7 +607,7 @@ opsm: provision::opsm
 
 # Guided tour of key features
 tour:
-    @echo "=== rsr-template-repo Tour ==="
+    @echo "=== hfsgtfoomw Tour ==="
     @echo ""
     @echo "1. Project structure:"
     @ls -la
@@ -610,12 +622,12 @@ tour:
 
 # Open feedback channel with diagnostic context
 help-me:
-    @echo "=== rsr-template-repo Help ==="
+    @echo "=== hfsgtfoomw Help ==="
     @echo "Platform: $(uname -s) $(uname -m)"
     @echo "Shell: $SHELL"
     @echo ""
     @echo "To report an issue:"
-    @echo "  https://github.com/hyperpolymath/rsr-template-repo/issues/new"
+    @echo "  https://github.com/hyperpolymath/hfsgtfoomw/issues/new"
     @echo ""
     @echo "Include the output of 'just doctor' in your report."
 

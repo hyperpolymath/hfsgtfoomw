@@ -1,0 +1,258 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Interaction model
+:toc:
+:toc-placement: preamble
+:status: DRAFT -- design, not implementation
+
+The behaviour, stated precisely enough to build and to test. Numbers are
+defaults, not law; every one of them is a setting.
+
+== 1. The idea in one line
+
+A floating window that treats *being in the way* as the primary signal, and
+resolves it without asking you to.
+
+Every existing picture-in-picture implementation makes the person do collision
+avoidance: notice the obstruction, grab the window, move it, remember where the
+thing was, move it again. This reverses that. The window is responsible for not
+obstructing, and you are responsible only for saying what you want to see.
+
+== 2. States
+
+[cols="1,1,3",options="header"]
+|===
+| State | Entered by | What it looks like
+
+| `docked`
+| default
+| The float, at its resting geometry, inside the work area
+
+| `chipped`
+| pointer over the float, or hotkey
+| A tab of at most 48x48 px at the worked corner; restores after the delay or on
+  click
+
+| `flung`
+| flick, or hotkey + arrow
+| In flight, then at rest near the target edge or display; returns on click or
+  on timer expiry
+
+| `banished`
+| flick off the edge, or hotkey + edge
+| Virtually outside the work area; a handle of at least 4 px remains on the
+  nearest edge; returns on click or on timer expiry
+
+| `ghosted`
+| policy, pointer proximity, or hotkey
+| Opacity at the configured floor; still showing content; audio continues
+
+| `clickthrough`
+| automatic while `ghosted`, or explicit toggle
+| Pointer events route to the page underneath; the float is unreachable until
+  released
+
+| `parked`
+| explicit
+| Invisible, audio-only, no pointer target; a status entry denies nothing but
+  occupies nothing
+|===
+
+`chipped`, `flung` and `banished` are *displacement* states: they exist because
+the float was in the way, and each has a well-defined way back. Nothing is ever
+displaced without a return path, and no return path depends on the pointer
+finding a moving target -- hence the persistent 4 px handle.
+
+== 3. Triggers
+
+|===
+| Trigger | Reads | Leads to
+
+| Pointer proximity
+| Pointer position, 24 px hysteresis
+| `nudge` (movement inside `docked`), or `chipped` on contact
+
+| Caret and focus
+| Active element rectangle, selection range
+| `nudge` clear of the focused field, always before `chipped`
+
+| Scroll
+| Scroll events, settled after 120 ms
+| During scroll: `ghosted` if configured. On settle: re-evaluate collisions
+
+| Idle
+| 30 s with no input
+| Restore from `chipped`, fade from `ghosted` if it was proximity-driven
+
+| Flick
+| Pointer velocity over a drag, above 0.5 px/ms
+| `flung` toward the projected edge, or the display it crosses
+
+| Hotkey
+| One key for on/off; one for each displacement; one modifier held for
+  click-through release
+| Mutually exclusive with pointer states; a hotkey always wins
+|===
+
+== 4. The chase problem (case C)
+
+This is the case that decides whether the product works. The naive fix -- "park
+it in a corner" -- fails because the corner is where the *next* button is.
+
+Rules, in priority order:
+
+. *Never cover the focused element.* If the float would overlap the element with
+   focus, or the caret's line, move it by the smallest displacement that clears
+   it.
+. *Prefer the nearest free edge*, not a fixed corner. Distance is measured from
+   the current position, so successive nudges do not thrash across the screen.
+. *Respect exclusion zones.* A site can declare regions that must never be
+   covered (for example a review comment box or a CI status panel). Declared
+   zones beat the user's preferred corner.
+. *Remember where you were and go back.* After a scroll-settle or a dismiss, the
+   float returns to its resting geometry, not to wherever it was nudged.
+. *Do not chase a moving target.* While the page is scrolling, displacement is
+   suspended and `ghosted` takes over instead; a window that jitters during
+   scroll is worse than one you cannot see.
+
+An optional later refinement: *learned preference per origin*. If the float is
+moved leftward on a given host five times, prefer the left edge there. Learning
+is local, explainable, and resettable -- never a hidden model.
+
+== 5. Settings
+
+Stored per manager (userscript) or per profile (app). Every key has a default
+that makes the product work with no configuration at all.
+
+[cols="2,1,3",options="header"]
+|===
+| Key | Default | Meaning
+
+| `enabled` | true | Master switch; also reachable from the toolbar
+| `geometry` | 480x270, 24 px margin | Resting size and edge inset
+| `corner` | `bottom-right` | Preferred resting corner, displaced as needed
+| `nudge.enabled` | true | Slide clear of pointer and caret
+| `nudge.clearance` | 24 px | Hysteresis distance
+| `chip.size` | 48 px | Chipped tab size
+| `chip.restore` | `pointer-out` | `pointer-out` \| `delay` \| `click`
+| `chip.delayMs` | 1200 | Used when `restore = delay`
+| `fling.timerMs` | 0 | 0 means "stay until clicked"
+| `banish.timerMs` | 30000 | 0 means "until clicked"
+| `ghost.opacity` | 0.15 | Floor opacity while ghosted
+| `ghost.mode` | `proximity` | `always` \| `proximity` \| `off`
+| `ghost.clickthrough` | true | Route clicks through while ghosted
+| `ghost.release` | `hold-alt` | What brings the float back under the pointer
+| `motion.reduced` | `system` | `system` \| `always` \| `never`
+| `exclusions` | empty | Per-origin regions that must not be covered
+| `source` | `pick` | What the float shows: `video` \| `element` \| `panel`
+|===
+
+== 6. Accessibility parity
+
+|===
+| Behaviour | Pointer | Keyboard | Assistive tech
+
+| On / off | toolbar button | hotkey | menu command with a checked state
+| Chip | hover | hotkey toggle | announced "chipped, press again to restore"
+| Fling | flick | hotkey + arrow | announced target region
+| Banish | flick off edge | hotkey | announced "banished, 30 s"
+| Ghost | proximity or menu | hotkey cycle | announced opacity level
+| Click-through | automatic | hold modifier | announced "clicks pass through"
+| Grabbing drag | drag | arrow-key move, 8 px per press, 64 px with shift | coordinates announced on settle
+|===
+
+Rule of thumb: if a state can be entered but not left with the keyboard, the
+design is wrong, not the user.
+
+== 7. Edge cases that decide quality
+
+* *Fullscreen video.* The float must not trap focus, and must yield when the page
+  enters fullscreen.
+* *Cross-origin iframes.* A userscript cannot reach into one. The float can still
+  host the iframe element itself; it cannot host a video inside it.
+* *DRM content.* Cannot be re-hosted in another element or canvas; only the
+  browser's own PiP can show it. This is a hard limit, not a bug.
+* *Multi-monitor.* Fling across displays needs the app; a userscript is bounded
+  by the viewport of one page.
+* *Tab switch.* An in-page float belongs to its page. It vanishes with the tab --
+  which is correct behaviour for a *page* float, and the reason the app exists.
+* *Printing, zoom, and OS scaling.* Geometry in CSS pixels; recompute on
+  `resize`, `orientationchange` and press of zoom.
+* *Sites that move their own controls.* Re-evaluate exclusions on mutation, but
+  rate-limit to once per frame -- a MutationObserver that fights the page is a
+  hang.
+* *Two floats.* Out of scope for v1; define it before someone does it twice.
+
+== 8. Mechanisms: what each vehicle can actually do
+
+This section exists because most of the desired behaviours are impossible in the
+place people expect them.
+
+[cols="2,2,3",options="header"]
+|===
+| Vehicle | Can | Cannot
+
+| Browser's native PiP window
+| Show video, stay above other apps, be moved by the *user*
+| Be moved, resized, faded or made click-through by script. It is browser and
+  OS property, outside the DOM. No amount of userscript changes that.
+
+| Document Picture-in-Picture (Chrome/Edge 116+, Firefox 151+)
+| Carry arbitrary page DOM into a real always-on-top window, with your own
+  controls inside it
+| Choose its position on screen; fade it; make it click-through; work in Safari
+  or on mobile
+
+| In-page float (userscript)
+| Position, transform, opacity, click-through, hover, drag, flick -- complete
+  control over its own pixels, on any site, with no install
+| Leave the page: it dies with the tab and cannot cover other applications
+
+| App window (WebView2 and a native layer)
+| True always-on-top across applications, per-window alpha, click-through,
+  cross-display fling, survive tab and browser
+| Nothing on mobile (see below), and it costs a signed binary
+
+| Android activity PiP
+| Float *our own* activity
+| Float another app's window -- the OS does not permit it
+|===
+
+Consequence: the choreography in §2 lives in the in-page float and in the app
+window. Everywhere else it degrades, and §3 of the
+link:../TECHNICAL-CONFORMANCE.adoc#_degradation_ladder[conformance document] says
+how far.
+
+== 9. Ideas not yet in scope, but worth recording
+
+* *Peek, don't toggle.* Holding a modifier to see through the float is better
+  than a persistent setting, because the need is momentary. Cheap to build once
+  click-through exists.
+* *Dock to the scrollbar.* When scrolling, the least-valuable 20 px of the page
+  is the gutter; a float that tucks into it while scrolling never covers content.
+* *Follow the caret's line, not the page.* Long documents: the obstruction risk
+  is where you are typing, which moves predictably. Track the caret, not the
+  page.
+* *Collision reporting, local.* Let the user mark "this was in the way" with one
+  key, storing an exclusion for that origin. Evidence-driven defaults instead of
+  guesswork.
+* *A sliver that tells you it is still there.* For audio-only and banished
+  states, an edge sliver plus a level meter: visible evidence that something is
+  playing, without a window.
+* *Choreography as a shared library.* If the motion language (flick, settle,
+  dodge, chip) is worth reusing elsewhere in the estate, it should become a
+  small, tested motion library rather than bespoke code in this project. Nothing
+  in this repository currently claims that; see
+  link:IMPLEMENTATION-LANGUAGE.adoc[the language analysis] for what does exist.
+
+== 10. Open questions
+
+. Does the float survive a tab switch as a *miniature* in the toolbar, or die
+  with the tab?
+. When two behaviours fire at once (pointer near and timer expiring), which wins?
+  The rules above say pointer, and say so because the pointer is the thing with
+  intent behind it.
+. Is "banish off-screen" allowed to be invisible to a screen-sharing session, or
+  must it stay in the captured region for honesty?
+. One float or several? v1 says one, and the settings schema should not pretend
+  otherwise.

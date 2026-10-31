@@ -1,0 +1,224 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Technical statement of conformance
+:toc:
+:toc-placement: preamble
+:status: DRAFT
+
+The measurable half of this project, kept out of the README on purpose. The
+README says what the thing is *for*; this says what would make a build
+*conformant*. A release claim requires every line below, on the platform it
+names, with the version recorded.
+
+== 1. Acceptance criteria
+
+Numbered so an issue can cite one. "Pass" means observed on a real machine, not
+inferred from code.
+
+|===
+| # | Criterion
+
+| AC-1
+| From a normal working page, *one action* (keystroke, toolbar button or handle)
+  puts the float into a working state, and one action takes it out.
+
+| AC-2
+| The float *never* takes keyboard focus by itself. Whatever you were typing
+  continues to arrive in the field you were in.
+
+| AC-3
+| When the pointer or caret comes within 24 px of the float's edge, the float
+  is clear of it within one frame budget (AC-9) without covering the element
+  that has focus.
+
+| AC-4
+| Hover-to-chip shrinks the float to at most 48x48 px and restores it on
+  pointer-out after the configured delay, or immediately on click. Tapping the
+  chip must not activate anything underneath it.
+
+| AC-5
+| Fling moves the float to the target region, comes to rest without overshoot
+  beyond 8 px, and returns on click or when the timer expires.
+
+| AC-6
+| Banish removes the float from the work area, leaving a handle of at least
+  4 px on the nearest edge, and restores it on click or on timer expiry.
+
+| AC-7
+| Ghost reduces opacity to the configured floor (default 0.15). Click-through
+  makes the underlying page receive clicks while the float receives none, and
+  is reversible with one action.
+
+| AC-8
+| Every behaviour is available from the keyboard alone, and the current state
+  is announced to assistive technology when it changes.
+
+| AC-9
+| Budgets: appear/disappear in under 100 ms; interaction response under 16 ms
+  at 60 Hz on a five-year-old laptop; under 30 MB additional memory; under 1%
+  idle CPU with the float idle; no network egress; no telemetry.
+
+| AC-10
+| Unsupported platform or missing primitive produces a specific, actionable
+  message naming what is missing. Never a silent no-op.
+
+| AC-11
+| `prefers-reduced-motion` removes travel animation: state changes are instant,
+  not animated.
+|===
+
+== 2. Platform matrix
+
+A row is ticked only when AC-1 to AC-11 pass there, with the version recorded.
+Blank is honest; guessed is not.
+
+[cols="2,1,3",options="header"]
+|===
+| Platform | Status | Notes
+
+| Windows + Chromium 116+ (Edge, Chrome) with a Tampermonkey-class manager
+| unverified
+| The first target, and a *real window*: Document Picture-in-Picture carries our
+  own DOM into an always-on-top, OS-composited window (ADR-0005). The browser
+  owns its position, so AC-3, AC-5 and AC-6 are reflow-and-close there, not
+  travel.
+
+| Windows + Firefox 151+
+| unverified
+| The same mechanism, on a younger floor. Firefox has Document PiP from 151 and
+  no `requestPictureInPicture()` at all, so it has no classic fallback lane.
+  Below 151 a Firefox row is a fallback row even on Windows.
+
+| Windows + Safari, Firefox before 151, or a manager without Document PiP
+| unverified
+| The fallback lane: classic video PiP where the engine exposes it, otherwise the
+  in-page float. One `<video>`, no custom UI, no script control of position.
+
+| Windows, app shell
+| unverified
+| The geometry lane, and the only one where AC-3, AC-5 and AC-6 pass as written:
+  layered window with per-window alpha, click-through via an extended window
+  style, topmost ordering. `gossamer` owns this window, so it can move it.
+
+| Linux, wlroots compositors
+| unverified
+| Layer-shell surfaces give always-on-top and click-through; window capture needs
+  a portal or screencopy
+
+| Linux, GNOME / KDE
+| unverified
+| Portal capture only; always-on-top needs an extension or a compositor rule
+
+| Android
+| unverified
+| Only our own activity can float; other applications' windows cannot, by OS rule
+
+| iOS / iPadOS
+| out of scope
+| No third-party floating window exists; only our own video can enter PiP
+|===
+
+The AC split behind the first four rows — which criteria can pass in a browser at
+all, and which belong to the window the app owns — is decided in
+link:../decisions/0005-window-mechanism.adoc[ADR-0005].
+
+A row moves off `unverified` only when an observation is attached. The procedure
+is link:../acceptance/RUN-SHEET.adoc[the acceptance run sheet]; the page it is
+observed against is `tests/acceptance/fixture/index.html`, which plants one hazard
+per criterion and fetches nothing. Which requirements are proven and which are
+only asserted is recorded in link:../proposals/NEXT-WORK.adoc[NEXT-WORK].
+
+== 3. Degradation ladder
+
+The feature degrades; it does not vanish. Each rung must be reachable from the
+one above it, and the user must be told which rung they are on.
+
+. In-page float with full choreography (userscript).
+. App-owned OS window (always-on-top, alpha, click-through).
+. Native picture-in-picture, browser-placed, no choreography.
+. Terminal or text equivalent, with the same keyboard commands.
+. Printed instructions naming what is missing.
+
+== 4. Accessibility conformance
+
+|===
+| Requirement | Means
+
+| Input parity
+| Every pointer gesture has a keyboard equivalent; nothing is hover-only.
+
+| Focus
+| The float is not in the tab order by default; its handle is reachable and
+  labelled; AC-2 holds with a screen reader running.
+
+| Announcement
+| State changes (chipped, ghosted, banished, restored) are exposed through an
+  ARIA live region, politely.
+
+| Motion
+| `prefers-reduced-motion: reduce` disables travel animation (AC-11).
+
+| Contrast and size
+| Handle and chip meet WCAG 2.2 AA at default zoom; hit targets at least
+  24x24 px, or 44x44 where the platform allows.
+
+| Timing
+| Every timer-driven restore can be disabled, and no state depends on completing
+  an action within a time limit.
+|===
+
+== 5. Privacy and security
+
+* No network calls in the first release; no analytics, no crash reporting, no
+  remote configuration.
+* No content leaves the machine: the float renders what is already in the page.
+* Settings live in the userscript manager's storage, or a local config file for
+  the app. Export/import is a file the user chooses.
+* The userscript requests the *narrowest* possible grants: `GM_setValue`,
+  `GM_getValue`, `GM_registerMenuCommand`, `GM_addStyle`. No `GM_xmlhttpRequest`,
+  no `unsafeWindow` unless a specific site makes it unavoidable, and then only
+  behind a site-scoped condition with a comment saying why.
+* The app asks for no elevated privileges, no driver, no kernel component, and
+  no screen-recording permission unless the user turns on a capture feature.
+* A store review is a release gate: the extension and app listings must describe
+  exactly the permissions requested.
+
+== 6. Estate conformance
+
+This project lives under the RSR estate and inherits its rules. Where those
+rules and a convenience conflict, the rules win; where the rules make the
+product impossible, that is raised as a policy question rather than worked
+around.
+
+|===
+| Rule | Consequence here
+
+| Language policy
+| Plain JavaScript (Bun-first toolchain) while AffineScript matures. TypeScript,
+  ReScript, Python, Go, Nix and AGPL are denied. See
+  link:proposals/IMPLEMENTATION-LANGUAGE.adoc[the language analysis].
+
+| JavaScript runtimes
+| One `package.json`; lock coverage for Bun (and any secondary runtime) written
+  by the estate tooling. No `package-lock.json`.
+
+| Licence
+| MPL-2.0 for code, CC-BY-SA-4.0 for prose; SPDX headers on every file.
+
+| Documentation
+| AsciiDoc only under `docs/`; every tracked `.adoc` must parse with no
+  diagnostics, and must not contain text that parses but is not a macro.
+
+| Gates
+| A release claim requires the estate gates to be green on the commit that
+  claims it: render, macro, placeholder, invisible-character, root shape.
+|===
+
+== 7. Release checklist
+
+. Every AC above passes on the named platform, with the row added to §2 and the
+  date.
+. The userscript is published with a version, a changelog, and a permissions
+  explanation.
+. The app is signed and has a reproducible build, or is not shipped.
+. The README's status block is updated in the same commit as the release claim.

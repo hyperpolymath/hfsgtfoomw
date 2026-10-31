@@ -1,0 +1,320 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Userscript publishing and the checky-monkey handshake
+:toc:
+:toc-placement: preamble
+:status: DRAFT
+
+How this project's userscript gets published, and what
+link:https://github.com/hyperpolymath/checky-monkey[checky-monkey] needs in order
+to curate it. The point of writing it now, before the script exists, is that the
+publishing contract shapes the code: header fields, permission set and build
+provenance are much cheaper to design in than to retrofit.
+
+== 1. Why this exists
+
+Greasy Fork is *distribution*: it hosts scripts, shows install counts, and gets
+out of the way. It is not curation, and it says so. That leaves the ecosystem's
+actual trust problem unsolved -- installing a userscript is still, in practice,
+trusting a stranger's header comment.
+
+checky-monkey is the estate's answer: a git-forge-based registry with
+content-addressed storage, a multi-dimensional analysis engine and a typed
+metadata model. Its stated dimensions are exactly the ones this project needs to
+be judged on:
+
+[cols="1,2",options="header"]
+|===
+| checky-monkey dimension | What it should mean for this project
+
+| security
+| no `eval`, no `new Function`, no remote code, no dynamic import, narrow
+  `@grant` set, no `unsafeWindow` unless site-scoped and justified
+
+| privacy
+| zero network egress (AC-9); no analytics; settings local; no resource fetches
+
+| performance
+| AC-9 budgets: under 1% idle CPU, under 16 ms interaction, under 30 MB
+
+| accessibility
+| AC-8: keyboard parity for every behaviour, live-region announcements,
+  reduced-motion respected
+
+| usability
+| one action on/off, settings discoverable, no modal interruption
+
+| compatibility
+| declared browser/managers, and what degrades where
+
+| functionality
+| the behaviours in the interaction model actually work
+
+| dependability
+| deterministic teardown, no leaked listeners, no hung timers
+|===
+
+== 2. The submission profile
+
+What `hfsgtfoomw.user.js` will look like, so that a parser, a reviewer and a
+future importer all see the same shape.
+
+=== 2.1 Header
+
+One standard `==UserScript==` block, no manager-specific extensions beyond what
+a parser can safely ignore:
+
+[source,javascript]
+----
+// ==UserScript==
+// @name         Get Out of the Way
+// @namespace    https://github.com/hyperpolymath/hfsgtfoomw
+// @version      0.1.0
+// @description  A floating window that moves itself out of your way
+// @author       Jonathan D.A. Jewell
+// @license      MPL-2.0
+// @homepageURL  https://github.com/hyperpolymath/hfsgtfoomw
+// @supportURL   https://github.com/hyperpolymath/hfsgtfoomw/issues
+// @updateURL    https://github.com/hyperpolymath/hfsgtfoomw/releases/latest/download/hfsgtfoomw.meta.js
+// @downloadURL  https://github.com/hyperpolymath/hfsgtfoomw/releases/latest/download/hfsgtfoomw.user.js
+// @match        *://*/*
+// @grant        GM_getValue
+// @grant        GM_setValue
+// @grant        GM_registerMenuCommand
+// @grant        GM_addStyle
+// @run-at       document-idle
+// @noframes
+// ==/UserScript==
+----
+
+Rules that follow from the profile:
+
+* `@grant` is the *complete* list, each one justified in the manifest (§2.2).
+  No `GM_xmlhttpRequest`, no `GM_download`, no `unsafeWindow` in the first
+  release.
+* No `@require`. A userscript that pulls code from a URL has a mutable trust
+  root; the whole point of a single-file bundle is that what you reviewed is what
+  runs.
+* No remote `@resource`. Assets are inlined, and their hashes are in the
+  manifest.
+* `@match` is as narrow as the features allow; broad matching is a *finding*,
+  even when it is convenient. If the float must work anywhere, that is a scope
+  argument to be made in the manifest, not a silent default.
+* `@license` carries the SPDX identifier, so a parser does not have to guess from
+  a banner.
+
+=== 2.2 Manifest
+
+A machine-readable sidecar, one per release, versioned with the script. TOML, to
+stay inside the estate's format route, and deliberately flat so a parser cannot
+disagree with itself about precedence.
+
+[source,toml]
+----
+# hfsgtfoomw.userscript.toml
+schema = "userscript-submission/0.1"
+
+[script]
+name        = "Get Out of the Way"
+namespace   = "https://github.com/hyperpolymath/hfsgtfoomw"
+version     = "0.1.0"
+description = "A floating window that moves itself out of your way"
+license     = "MPL-2.0"
+homepage    = "https://github.com/hyperpolymath/hfsgtfoomw"
+support     = "https://github.com/hyperpolymath/hfsgtfoomw/issues"
+type        = "userscript"
+
+[compat]
+browsers = ["firefox>=151", "chrome>=116", "edge>=116"]
+managers = ["tampermonkey", "violentmonkey", "greasemonkey"]
+degrades = { safari = "unsupported", mobile = "unsupported", firefox_old = "video-only" }
+
+[permissions]
+"GM_getValue"            = "read user settings (local only)"
+"GM_setValue"            = "store user settings (local only)"
+"GM_registerMenuCommand" = "the on/off and settings menu"
+"GM_addStyle"            = "inject the float's own stylesheet"
+
+[network]
+egress  = "none"
+trackers = "none"
+
+[build]
+source_repo  = "https://github.com/hyperpolymath/hfsgtfoomw"
+source_commit = "<40-hex>"
+builder      = "bun"
+lockfile_sha256 = "<sha256 of bun.lock>"
+artifact     = "hfsgtfoomw.user.js"
+artifact_sha256 = "<sha256 of the built file>"
+reproducible = true
+
+[conformance]
+criteria = "docs/TECHNICAL-CONFORMANCE.adoc"
+passed   = ["AC-1", "AC-2", "AC-3", "AC-8", "AC-9", "AC-10", "AC-11"]
+platform = "windows-11/firefox-151"
+
+[accessibility]
+statement = "docs/TECHNICAL-CONFORMANCE.adoc#_4_accessibility_conformance"
+keyboard_parity = true
+reduced_motion  = true
+
+[security]
+contact  = "j.d.a.jewell@open.ac.uk"
+policy   = "https://github.com/hyperpolymath/hfsgtfoomw/security/policy"
+----
+
+=== 2.3 Build and provenance
+
+* Pinned toolchain; one `package.json`; Bun lockfile committed.
+* `just build` produces the userscript deterministically: same inputs, same
+  bytes. The release publishes the artifact *and* its SHA-256.
+* The manifest's `source_commit` is the commit the artifact was built from, so a
+  verifier can rebuild and compare. A submission that cannot be rebuilt is
+  reported as `unverified`, not as passed -- the difference matters.
+
+== 3. What this project needs from checky-monkey
+
+Recorded as requirements, because a registry that scores us is only useful if we
+can act on the score before publishing:
+
+. *A local validator* with exit codes: `0` clean, `1` findings, `2` could not
+  run. No silent green.
+. *Evidence per finding*, not one opaque number: `file:line`, rule id, and the
+  dimension it affects.
+. *`unknown` as a first-class outcome.* A check that did not run must not read as
+  a pass; that failure mode has already cost this estate 211 repositories with an
+  unremoved instruction block.
+. *A dry-run against a git URL and a commit*, so the manifest's provenance fields
+  can be checked before a release.
+. *A stable schema version* for the registry entry, and an explicit statement of
+  what the analyser does *not* check yet.
+
+== 4. The work order for checky-monkey
+
+Paste this into an agent working on that repository. It is scoped to one
+shippable increment and it starts from the roadmap's own Phase 1.
+
+[source,text]
+----
+Task: accept a third-party userscript submission end to end -- parse, analyse,
+record -- with hfsgtfoomw as the first real fixture.
+
+Context: checky-monkey models ScriptMetadata and GrantPermission already, and its
+TrustScore has eight dimensions (security, privacy, performance, accessibility,
+usability, compatibility, functionality, dependability). Phase 1 in the roadmap
+is unchecked: metadata parser, CUBS schema, CLI. Do those, not the AI features.
+
+Deliver, in this order:
+
+1. Header parser (Phase 1, first checkbox)
+   - parse the standard ==UserScript== block into ScriptMetadata exactly as the
+     existing Haskell model defines it
+   - preserve unknown keys in a map rather than dropping them; never silently
+     coerce a malformed version or an unparseable @grant
+   - exit 2 on a script with no header; exit 1 with a location on a malformed one
+
+2. Submission manifest
+   - accept the "userscript-submission/0.1" TOML described in
+     hfsgtfoomw/docs/proposals/USCRIPT-PUBLISHING.adoc section 2.2
+   - validate it against the header: @grant list must equal the manifest's
+     permissions keys; @name/@version/@license must agree; mismatch is a finding
+     naming both sides
+   - tolerate unknown keys (forward compatible), ignore nothing silently
+
+3. Import from provenance
+   - given a git URL + commit, fetch the manifest, verify artifact_sha256 against
+     the named file, and record source_commit, lockfile_sha256, reproducible
+   - if reproducible = true but no rebuild is attempted, the result is
+     "unverified", not "pass"
+
+4. Analysis pass 1 -- honest and narrow
+   - rules: eval / new Function / dynamic import; any network call (fetch,
+     XMLHttpRequest, WebSocket, GM_xmlhttpRequest); @require present;
+     remote @resource; @grant breadth; @match breadth; @run-at missing
+   - each finding carries rule id, file:line, dimension, and severity
+   - the summary reports checks_run, checks_skipped and checks_unknown
+     separately; a check that did not run is never folded into a pass
+
+5. Registry entry + CUBS record
+   - content-addressed (artifact sha256), versioned, idempotent: re-running on
+     the same artifact produces no new record
+   - emit JSON matching a documented schema with an explicit schema version
+   - CLI: `checky validate <path-or-url>` and `checky record <manifest>` with
+     0/1/2 exit codes
+
+6. Fixtures with planted positives
+   - one clean fixture, one with eval, one with a remote @require, one with
+     GM_xmlhttpRequest, one malformed header
+   - assert each is caught and named, and that the clean one passes
+   - hfsgtfoomw is fixture zero once its userscript exists
+
+7. Docs: "Submitting a userscript", "What the scores mean", and an explicit
+   "What we do not check yet" list.
+
+8. One correction: the roadmap's "eventually full ReScript rewrites" conflicts
+   with the estate language policy (ReScript is denied; AffineScript is the
+   migration target). Change it to AffineScript, or record the exception with a
+   reason. Do not leave a planned feature that the estate's own policy forbids.
+
+Non-goals: no AI rewriting, no automatic publishing to Greasy Fork, no single
+opaque score, no hosting of third-party binaries, no CUBS/IPFS work beyond the
+entry record.
+
+Report: rules implemented, fixtures and their results, the registry schema, and
+every check that is declared but not yet real.
+----
+
+== 5. What happens if checky-monkey is not ready
+
+Ship through Greasy Fork, with the same manifest committed beside the script and
+the artifact hash in the release notes. The manifest costs nothing to maintain
+and is the thing an importer needs later; publishing without it is what makes
+retrofit expensive.
+
+== Appendix A: repository topics
+
+GitHub allows 20 per repository. These mix product signal with the estate's
+spine, and each is either true of this repository today or true of it by the
+first release.
+
+[cols="3,1",options="header"]
+|===
+| Topic | Kind
+
+| `picture-in-picture` | product
+| `userscript` | product
+| `greasemonkey` | product / ecosystem
+| `tampermonkey` | product / ecosystem
+| `browser-extension` | product
+| `always-on-top` | product
+| `window-management` | product
+| `overlay` | product
+| `desktop-app` | product
+| `productivity` | product
+| `accessibility` | product (AC-8 is a release gate)
+| `affinescript` | language (ADR-0004)
+| `affine-types` | language
+| `gossamer` | app shell (ADR-0004)
+| `webview` | app shell
+| `typed-provenance` | estate spine
+| `formal-verification` | estate spine
+| `zero-trust` | estate spine (no egress, narrow grants)
+| `epistemic-infrastructure` | estate spine
+| `veridical-computing` | estate spine
+|===
+
+*Status: approved and applied by the owner on 2026-10-31 — all 20 present on the
+repository, verified by reading them back from the API.* The set is
+deliberately not in `.github/settings.yml`: that file is applied to every child
+of the template, so a product topic list there would be inherited by unrelated
+repositories. It is therefore set once, out of band, as the settings file's own
+doctrine requires — this is the command that was used, kept as the audit trail:
+
+[source,console]
+----
+gh repo edit hyperpolymath/hfsgtfoomw \
+  --add-topic picture-in-picture,userscript,greasemonkey,tampermonkey,browser-extension,always-on-top,window-management,overlay,desktop-app,productivity,accessibility,affinescript,affine-types,gossamer,webview,typed-provenance,formal-verification,zero-trust,epistemic-infrastructure,veridical-computing
+----
+
+Alternates, if one of the above proves untrue later: `violentmonkey`,
+`equivalence-aware-computing`, `linear-types`, `webassembly`.

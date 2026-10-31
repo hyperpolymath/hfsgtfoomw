@@ -1,0 +1,253 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Implementation language
+:toc:
+:toc-placement: preamble
+:status: DECIDED -- see link:../decisions/0004-implementation-language.adoc[ADR-0004]
+
+What this project is written in, what it cannot be written in, and what has to
+exist in AffineScript before AffineScript can take over. The last section is a
+work order, not a wish list.
+
+The decision is recorded in link:../decisions/0004-implementation-language.adoc[ADR-0004]:
+*AffineScript for both vehicles*, with the userscript target as the prerequisite
+for the first release, the app built on gossamer, and the four-file shape below
+as the fallback rather than the plan.
+
+== 1. The constraint
+
+The estate's language policy is not advisory: it is enforced by gates and it is
+what the rest of this repository is held to.
+
+* *Denied:* Nix, Python, Go, TypeScript, ReScript, AGPL.
+* *JavaScript runtime order:* Bun, then Deno, then pnpm, then npm as a last
+  resort; one `package.json`, every runtime's lock written by the estate
+  tooling, and no `package-lock.json`.
+* *Permitted interim:* *plain JavaScript*. The policy says so explicitly, and
+  named TypeScript and ReScript as things that *migrate to AffineScript*.
+
+So the answer to "can we do it in ReScript meanwhile" is *no, and not because of
+taste*: ReScript is on the denied list in this estate's own policy documents,
+and the sanctioned migration target for ReScript is AffineScript. ReScript
+would put the project in breach of the rules the repository enforces on itself
+on day one.
+
+== 2. The two vehicles, and what each needs
+
+[cols="1,1,2",options="header"]
+|===
+| Vehicle | Language | Shell or packaging
+
+| Userscript
+| *AffineScript*, targeting a single-file browser bundle with userscript manager
+  bindings (§4)
+| Bun-built IIFE with a userscript metadata banner. No framework: the DOM is the
+  framework.
+
+| App
+| *AffineScript* for the core and the UI
+| link:https://github.com/metadatastician/gossamer[gossamer], the estate's
+  resource-aware desktop shell (Zig + Idris2 ABI, linear types, compile-time
+  permission checks). Window behaviour gossamer lacks is contributed upstream,
+  not reimplemented here.
+|===
+
+The split matters more than the language: *browser control stops at the page*.
+A userscript can own every pixel of its own float and nothing of the browser's
+window; the app owns a real window and nothing of the page's DOM. Writing that
+boundary down is why the language question can be answered per vehicle instead
+of once.
+
+== 3. The fallback shape, if the target is not ready
+
+The decision is AffineScript. The fallback exists only so that a release is not
+held hostage to another repository's schedule, and it is deliberately shaped so
+that the port is a transcription.
+
+* A userscript must be *one file, no build step required by the publisher* -- that
+  is what makes it installable in every manager, with no runtime download.
+* The interesting work is geometry, pointer physics and event discipline --
+  about 1,500 lines. Getting it wrong in a language without affine ownership is
+  exactly the leak class the language exists to prevent, which is why this is a
+  fallback and not the plan.
+* The shape: pure functions for geometry and state transitions, one thin adapter
+  for DOM and storage, no inheritance, no framework. That is also the shape
+  AffineScript wants, so the port is transcription.
+
+== 4. What AffineScript is missing for this
+
+AffineScript v0.2 is early and experimental, compiles to WebAssembly, and ships
+a Bun-ESM JavaScript host backend whose output "remains browser-importable" when
+it only uses browser-provided externs. It also carries a DOM story
+(`stdlib/Dom.affine`, the `affinescript-dom` runtime, `affinescript-tea`). That
+is closer than expected. The gaps are packaging and host surface, not semantics:
+
+. *A single-file browser bundle target.* Userscripts are one file, loaded into a
+  page that is not a module: no `import`, no import maps, no bundler at install
+  time. Needed: `--target userscript` (or `--iife`) emitting one self-contained
+  IIFE, ES2020, with an optional metadata banner, and no `eval`.
+. *Userscript manager bindings.* `GM_getValue`, `GM_setValue`,
+  `GM_registerMenuCommand`, `GM_addStyle`, `GM_notification`, with a fallback to
+  `localStorage` when the manager is absent and a capability check rather than a
+  crash. A `stdlib/Userscript.affine` face is the natural home.
+. *A WASM delivery story.* Either a pure-JS emit for the target, or a documented
+  recipe for embedding a module inside a userscript: base64, synchronous or
+  async instantiation, and what happens under a page CSP that blocks
+  `wasm-unsafe-eval`. Greasy Fork review and browser store review both need this
+  answered *before* the first release, not after a rejection.
+. *A no-bundler DOM runtime build.* The `affinescript-dom` runtime has to be
+  consumable as an IIFE too, or the userscript target is unusable in practice.
+. *Externs for the pointer and observer surface.* `PointerEvent`, pointer
+  capture, `requestAnimationFrame`, `ResizeObserver`, `IntersectionObserver`,
+  `MutationObserver`, `matchMedia('(prefers-reduced-motion)')`. Typed, and with a
+  release path.
+. *Deterministic teardown as a checked property.* This is the strongest argument
+  for AffineScript here: every listener, observer and animation handle must be
+  released exactly once, and affine ownership makes that a type error rather
+  than a leak. It needs to be expressible for *host* resources, not just values.
+. *A CI fixture that proves it.* A test that builds a userscript-shaped bundle
+  and loads it in a headless browser with `@grant none`, asserting that it adds
+  and removes its element and leaves no listeners behind.
+. *One page of documentation:* "Shipping a userscript with AffineScript", with
+  the working build command.
+
+Nothing above requires new type theory. All of it is packaging, host bindings
+and a test -- which is exactly why it is worth doing now, before this project's
+code exists in the wrong shape.
+
+== 5. The work order
+
+Paste the block below into whichever agent works on the AffineScript repository.
+It is deliberately scoped to one shippable increment with acceptance tests.
+
+[source,text]
+----
+Task: add a userscript build target to AffineScript, with manager bindings and
+a CI fixture.
+
+Context: AffineScript compiles to WebAssembly and ships a Bun-ESM JS-host
+backend whose output remains browser-importable. That is not enough for a
+userscript, which is a single non-module file loaded into an arbitrary page by
+Tampermonkey/Greasemonkey/Violentmonkey. A first project wants to ship one.
+
+Deliver, in this order:
+
+1. `--target userscript` (alias `--iife`) on the CLI
+   - emits ONE file: an ES2020 IIFE, no import/export, no dynamic import,
+     no eval, no top-level await
+   - optional `--banner FILE` prepended verbatim (for the ==UserScript== header)
+   - refuses loudly if any reachable module needs an unsupported construct,
+     naming the module and the construct
+   - documented in the CLI reference; exit codes consistent with the existing
+     UnsupportedFeature path
+
+2. `stdlib/Userscript.affine`
+   - GM_getValue / GM_setValue / GM_registerMenuCommand / GM_addStyle /
+     GM_notification, each with a capability check
+   - fallback to localStorage when no manager is present
+   - typed errors, no panics; affine handles for anything that must be released
+
+3. WASM delivery
+   - either a pure-JS emit for this target, or
+   - base64-embedded module + a documented instantiation recipe, stating what
+     happens when the page CSP blocks wasm-unsafe-eval, and what the fallback is
+   - written down in docs/, with the size cost measured and reported
+
+4. Runtime packaging
+   - an IIFE build of the DOM runtime consumable by a non-module script
+   - no bundler required at the consumer's end
+
+5. CI fixture: `test/e2e/userscript/`
+   - a fixture program that appends a div, registers a menu command, stores and
+     reads one setting, and removes the div on teardown
+   - build it with the new target; assert the output is one file, contains no
+     import/export/eval, and is under a stated size
+   - load it in a headless browser with @grant none; assert the div appears and
+     disappears and that no listener survives teardown (spy on add/remove)
+   - negative control: a fixture using an unsupported construct must fail the
+     build with a message naming it
+
+6. Docs: a single page "Shipping a userscript with AffineScript" with the exact
+   commands, the size budget, and the known limits (CSP, manager differences).
+
+Non-goals: no new type-system features; no source maps; no minifier; no
+framework bindings; do not change existing targets' output.
+
+Report: what was built, the size of the emitted file, the fixture's results,
+and every place the design had to be worked around. If any of (1)-(6) turns out
+to need a semantic change to the language, stop and say so rather than
+approximating -- this is meant to be packaging, and a semantic surprise is a
+finding worth having.
+----
+
+== 6. Prior art in the estate (and one licence trap)
+
+Three existing repositories bear directly on this project. They were checked
+rather than assumed, and each has a different verdict.
+
+=== gossamer (`metadatastician/gossamer`) -- adopt
+
+A resource-aware desktop shell for web front ends: Tauri/Electron-shaped
+packaging where webview handles, IPC shapes and permissions are checked at
+compile time (Zig core, Idris2 ABI, linear types, no garbage collector). This is
+the app half's shell.
+
+Its window surface already covers part of what the interaction model needs:
+`alwaysOnTop` is present in the source. *Click-through is not* (`click_through`
+has no hits, and neither do the Win32 extended-style names), and per-window
+opacity needs checking per platform. So the app's most distinctive behaviours
+are a contribution to gossamer, not a bespoke layer beside it -- which is the
+estate's own "solutions at source" rule, applied to ourselves.
+
+=== affinescript-vite (`hyperpolymath/affinescript-vite`) -- reference only, not a dependency
+
+Despite the name it is a Vite *plugin* whose demo is the `road-skate` game, and
+it answers the question "how does AffineScript reach a browser today". The
+answer, from its own files:
+
+* `.as` compiles to a **WasmGC** module (`game/main.js` imports `./main.as` and
+  calls `roadSkate.init({node})` -- a TEA program handle);
+* the page loads it as an **ES module** through `<script type="module">`, bundled
+  by Vite;
+* the build is driven by **Deno**.
+
+That is a bundler path, not a userscript path: a userscript has no `import`, no
+module loader and no bundler at install time. It is still the most useful thing
+in the estate for the work order in §5, because it proves the compiler can emit
+something a browser runs, and it shows exactly which two things are missing
+(single-file emit, and a non-module runtime).
+
+*Licence trap:* its `package.json` declares **AGPL-3.0-or-later**. The estate
+denies AGPL, and this repository is MPL-2.0. So: read it, do not copy from it, and
+do not add it as a dependency. That mismatch looks like an accident worth fixing
+upstream in its own right.
+
+=== `grimrepo-scripts` -- the checklist, and a migration
+
+`grim-repo` is the maker; its userscripts live separately, in
+`gitlab.com/extensions-library/monkey-scripts/grimrepo-scripts` (the ones known
+in the estate as *azraels*): `GrimCore` (GM API bindings, DOM utilities,
+storage, HTTP, UI), `AibdpChecker`, `GitlabEnhanced`, `A11yOverlay`, `DarkMode`.
+They are ReScript-first, which is the language the policy denies and the very
+surface AffineScript's `jaffascript` face exists to replace.
+
+Two consequences:
+
+* *`GrimCore` is the requirements list* for §5 item 2. It already solved GM
+  bindings, storage and UI helpers in a userscript context; the AffineScript
+  target should be able to express the same surface before this project depends
+  on it.
+* *Do not couple to it.* Calling into a ReScript bundle would import the denied
+  language into a build that forbids it. It is prior art to port, not a library
+  to require.
+
+
+* `geometry.pure.js` -- collision, clearance and settling maths, no DOM;
+* `state.machine.js` -- the states of the interaction model and their legal
+  transitions, no DOM;
+* `adapter.dom.js` -- the only file that touches the browser;
+* `adapter.gm.js` -- the only file that touches the userscript manager.
+
+Four files, one seam. That structure is also the answer to "which parts of this
+become AffineScript first": the first two, because they are where the invariants
+are, and invariants are what affine types are for.

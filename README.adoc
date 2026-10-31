@@ -1,207 +1,162 @@
 // SPDX-License-Identifier: CC-BY-SA-4.0
-// Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-// SPDX-FileCopyrightText: 2024-2026 Jonathan D.A. Jewell (hyperpolymath)
-= Holy f$£%ing s%£$, get the f$£% out of the way
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Holy f$£%ing s$£%, get the f$£% out of the way
 :toc:
 :toc-placement: preamble
 
-// ── Licensing ───────────────────────────────────────────────────────────────
-image:[Code licence: MPL-2.0,link="https://opensource.org/licenses/MPL-2.0"]
-image:[Docs licence: CC-BY-SA-4.0,link="https://creativecommons.org/licenses/by-sa/4.0/"]
-image:https://img.shields.io/badge/Provenance-Quantum--Safe-blueviolet[Quantum-Safe Provenance,link="docs/legal/EXHIBIT-B-QUANTUM-SAFE.txt"]
-
-// ── Standard & quality gates ────────────────────────────────────────────────
+image:https://img.shields.io/badge/status-pre--alpha-orange[Status: pre-alpha]
+image:https://img.shields.io/badge/Code-MPL--2.0-blue.svg?logo=mozilla[Code licence: MPL-2.0,link="https://opensource.org/licenses/MPL-2.0"]
+image:https://img.shields.io/badge/Docs-CC--BY--SA--4.0-blue.svg?logo=creativecommons[Docs licence: CC-BY-SA-4.0,link="https://creativecommons.org/licenses/by-sa/4.0/"]
 image:https://img.shields.io/badge/RSR-Rhodium_Standard-9C27B0[Rhodium Standard Repository,link="https://github.com/hyperpolymath/rhodium-standard-repositories"]
-image:https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/{{OWNER}}/{{REPO}}/governance-badges/badges/k9.json[K9 conformance,link="https://github.com/{{OWNER}}/{{REPO}}/actions/workflows/dogfood-gate.yml"]
-image:https://www.bestpractices.dev/projects/{{OPENSSF_BP_ID}}/badge[OpenSSF Best Practices,link="https://www.bestpractices.dev/projects/{{OPENSSF_BP_ID}}"]
-image:https://api.scorecard.dev/projects/github.com/{{OWNER}}/{{REPO}}/badge[OpenSSF Scorecard,link="https://scorecard.dev/viewer/?uri=github.com/{{OWNER}}/{{REPO}}"]
-image:https://sonarcloud.io/api/project_badges/measure?project={{OWNER}}_{{REPO}}&metric=alert_status[SonarQube Quality Gate,link="https://sonarcloud.io/summary/new_code?id={{OWNER}}_{{REPO}}"]
-image:https://archive.softwareheritage.org/badge/origin/https://{{FORGE}}/{{OWNER}}/{{REPO}}/[Archived in Software Heritage,link="https://archive.softwareheritage.org/browse/origin/?origin_url=https://{{FORGE}}/{{OWNER}}/{{REPO}}"]
+image:https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/hyperpolymath/hfsgtfoomw/governance-badges/badges/k9.json[K9 conformance,link="https://github.com/hyperpolymath/hfsgtfoomw/actions/workflows/dogfood-gate.yml"]
+image:https://api.scorecard.dev/projects/github.com/hyperpolymath/hfsgtfoomw/badge[OpenSSF Scorecard,link="https://scorecard.dev/viewer/?uri=github.com/hyperpolymath/hfsgtfoomw"]
+// The OpenSSF Best Practices badge is deliberately absent: it needs a numeric
+// project id from bestpractices.dev, which this repository has not registered.
 
-// ── Provenance & ecosystem ──────────────────────────────────────────────────
-image:https://img.shields.io/badge/Idris-Inside-5E5086?logo=idris&logoColor=white[Idris Inside,link="https://github.com/hyperpolymath/proven"]
-image:https://img.shields.io/badge/Zig-Zero--overhead-F7A41D?logo=zig&logoColor=black[Zig Zero-overhead FFI,link="https://github.com/hyperpolymath/typed-wasm"]
-image:https://api.thegreenwebfoundation.org/greencheckimage/{{FORGE}}[Green Web,link="https://www.thegreenwebfoundation.org/green-web-check/?url={{FORGE}}"]
+*The thing you are keeping an eye on should get out of the way -- by itself.*
 
-{{PROJECT_DESCRIPTION}}
+Picture-in-picture solved one problem and created another. You pinned the call,
+the build log, the dashboard, the video -- and now it sits exactly where the
+button is. So you drag it. Then it is over the thing you need to read. So you
+drag it again. Then the page scrolls, the layout changes, and it is in front of
+the *next* button.
 
-[IMPORTANT]
-====
-*This file is a template.* You are reading `README.adoc` from the *RSR template repo*
-(or a freshly-cloned copy of it). Run `just repo-init` to replace every `{{PLACEHOLDER}}`
-token with your project's details, then delete this admonition. Until you do, the
-`{{...}}` markers below are intentional placeholders, not content.
-====
+This project is about that second problem: a floating window that knows it is
+in the way, and moves itself, dissolves, or disappears for you -- and comes back
+when you want it, without you hunting for it.
 
-== What this is
+== The three ways it gets in the way
 
-A new repository scaffolded from the *Rhodium Standard Repository (RSR)* template:
-a batteries-included starting point that ships with CI/CD, machine-readable project
-metadata, an AI-agent gatekeeper protocol, a formally-typed ABI/FFI seam
-(Idris2 + Zig), container and reproducible-build scaffolding, and governance
-infrastructure — all wired and passing the RSR validators on day one.
-
-Replace this section with a description of *your* project once initialised.
-
-== Quick start
-
-[source,bash]
-----
-# 1. Create a repo from this template (or clone it), then from the repo root:
-just repo-init                # interactive bootstrap: fills every {{PLACEHOLDER}}
-
-# 2. See the available tasks:
-just                     # lists all phases (build, test, validate, audit, ...)
-
-# 3. Check the repo still satisfies the RSR shape:
-just validate            # structure + metadata checks
-----
-
-`just repo-init` prompts for the project name, owner, author, licence contact, and the
-other values listed in `.machine_readable/ai/PLACEHOLDERS.adoc`, substitutes them
-across the tree, validates the result, and (if available) runs the `k9-svc` checks.
-
-[[ai-install]]
-== AI-Assisted Installation (Recommended)
-
-=== Just say it
-
-Say this to any AI assistant that can read a URL and run commands (or give you
-commands to paste):
-
-[source,text]
-----
-Create a new repository from https://github.com/hyperpolymath/rsr-template-repo
-----
-
-The URL is the key: it leads the assistant to
-link:docs/AI_INSTALLATION_GUIDE.adoc[`docs/AI_INSTALLATION_GUIDE.adoc`], the
-complete step-by-step recipe. The assistant checks your system, installs the
-prerequisites, instantiates the template with `just repo-init`, and verifies the
-result with `just doctor`.
-
-* "Set up rsr-template-repo so I can work on the template itself — https://github.com/hyperpolymath/rsr-template-repo"
-* `./launcher.sh --ai-setup` (or `just ai-setup`) prints the line and the guide path.
-
-=== What you will be asked
-
-. Your operating system (Linux, macOS, or Windows via WSL2).
-. The new project's name, owner, author and licence contact (the values listed in
-  `.machine_readable/ai/PLACEHOLDERS.adoc`).
-. To confirm the privacy notice below.
-
-=== Privacy and security
-
-[IMPORTANT]
-====
-Setting up rsr-template-repo clones this repository and installs its developer
-tools per-user with mise (no administrator rights, nothing sent anywhere).
-`just repo-init` rewrites files only inside the new checkout; it creates no
-remote repository and pushes nothing until you do.
-====
-
-=== Minting without a terminal
-
-Agents and CI can mint non-interactively: set `RSR_NON_INTERACTIVE=1` and pass
-the answers as environment variables named like the prompts' variables in
-`build/just/repo-init.just` (`PROJECT_NAME`, `REPO`, `OWNER`, `AUTHOR` and
-`AUTHOR_EMAIL` are required; any other answer left unset is blank or takes its
-default). Piping the answers to stdin in prompt order also works.
-
-=== Troubleshooting
-
-Run `just doctor`; each FAIL carries a code explained in
-link:docs/SETUP.adoc#troubleshooting[`docs/SETUP.adoc` §Troubleshooting], and
-`just heal` applies the automatic fixes. Prefer to do it yourself? The full
-manual route is link:docs/SETUP.adoc[`docs/SETUP.adoc`]; developers and
-maintainers can brief an AI with `just ai-warmup dev` / `just ai-warmup maintainer`.
-
-== What you get
-
-* *Machine-readable metadata* (`.machine_readable/descriptiles/`) — `STATE`, `META`,
-  `ECOSYSTEM`, `PLAYBOOK`, `AGENTIC`, `NEUROSYM`, `CLADE`, and `anchors/ANCHOR`,
-  in deed, so tools and agents can read the project's state and boundaries.
-* *AI gatekeeper protocol* — `rsr-template-repo_chora.deed` (the repo deed) is the
-  universal entry point that tells an AI agent how to work in this repo before it
-  touches anything; it carries the AI allocation policy and the ply directory tree.
-* *Typed ABI/FFI seam* — `src/interface/Abi/` (Idris2 type + layout proofs) over
-  `src/interface/ffi/` (Zig implementation), with generated C headers.
-* *CI/CD* — GitHub Actions for quality, security (CodeQL, Scorecard, secret
-  scanning), multi-forge mirroring, and RSR anti-pattern enforcement.
-* *Supply-chain & reproducibility* — container layering (stapeln), Guix shells,
-  SBOM, and signing hooks.
-* *Governance* — `GOVERNANCE.adoc`, `MAINTAINERS.adoc`, `.github/` community health
-  files, and a release `AUDIT.adoc` gate.
-
-== Governance badges
-
-The *K9 conformance* badge in the row at the top becomes live after
-`just repo-init` replaces the `{{OWNER}}` and `{{REPO}}` placeholders in its URL
-and an eligible push to `main` publishes it. It is published by
-`.github/workflows/dogfood-gate.yml` to a generated *orphan* branch called
-`governance-badges`, and read back through the shields endpoint.
+These are the cases the design is built around. If a feature does not serve one
+of them, it is not in scope.
 
 [cols="1,3",options="header"]
 |===
-| Badge | What it means
+| Case | What happens today
 
-| green `success`
-| The K9 lane ran for that commit on `main` and passed.
+| *A. On and off, and settings*
+| The control is buried in a menu, or it is a browser button you have to find
+  before you can make it stop. Turning it on or off has to be one action,
+  available from the toolbar, a keystroke, or the window itself.
 
-| red `failure`
-| The K9 lane ran for that commit on `main` and failed.
+| *B. It covers the thing you need*
+| You are typing into a field, or copying text, and the floating window is over
+  it. You move the window, then lose where the field was. Or the window is
+  semi-transparent over text you cannot read anyway.
 
-| grey `skipped`, `cancelled`, `unavailable`, `unknown`
-| That commit produced *no trustworthy* K9 result. Grey is not "pending" and
-  not a stale green: a skipped, cancelled or unavailable lane replaces an
-  earlier green badge with grey.
+| *C. It chases you down the page*
+| The GitHub review flow, in full: pin something, scroll to approve, move it off
+  the approve button, get to the review comment box and it is over the text, move
+  it and the CI status is hidden, move it and it is back over *commit*. Every
+  move is a decision you did not want to make.
 |===
 
-* `governance-badges` is *generated output*. It deliberately has *no common
-  ancestor with `main`*, it has no pull request, and it must *never be merged*.
-  Recent pushes to it are ordinary badge refreshes.
-* A run that would publish the same bytes makes *no commit at all*.
-* Nothing in the badge pipeline can turn a failing validation green: only a
-  lane that ran and passed, with its artifact present, renders brightgreen.
+Case C is the one nobody else solves -- every picture-in-picture implementation
+makes you the collision-avoidance system. That is the whole product.
 
-The full operational contract - the exact state table, how API errors are
-classified, how concurrent publications are serialised, and how to repair a bad
-file - is in link:.github/workflows/README.adoc[`.github/workflows/README.adoc`].
+== What it does
 
-== Repository map
+Behaviour is described in full in
+link:docs/proposals/INTERACTION-MODEL.adoc[the interaction model]; the short
+version:
 
-The authoritative map is generated, so it cannot drift from the tree:
-link:docs/architecture/REPOSITORY-MAP.adoc[docs/architecture/REPOSITORY-MAP.adoc]
-(regenerate with `just repo-map`; CI fails if it is stale).
-
-The short version:
-
-[cols="1,3"]
+[cols="1,3",options="header"]
 |===
-| Path | What lives there
+| Behaviour | What you get
 
-| `README.adoc`, `CLAUDE.md` | Start here - humans and AI agents respectively.
-| `src/`, `tests/`           | The code and its tests.
-| `docs/`                    | Human documentation, including the full map above.
-| `.machine_readable/`        | Manifests, contractiles and policies that tools read.
-| `build/`, `Justfile`       | Every task runs through `just`; phases live in `build/just/`.
-| `ci/`, `.github/`          | CI configuration; GitHub reads `.github/` and no other path.
+| *Nudge*
+| When the pointer, the caret or the focused field approaches, the window slides
+  clear of it -- toward the nearest free edge, not to a fixed corner.
+
+| *Chip*
+| Hover it and it shrinks to a small tab for a settable moment, then restores on
+  its own, or on click. Useful when you need the space for a second.
+
+| *Fling*
+| Throw it to another part of the screen (or another monitor). It settles, stays
+  out of the way, and comes back when clicked or when a timer expires.
+
+| *Banish*
+| Throw it off-screen entirely for a set period. A thin sliver remains at the
+  edge so it can be brought back before the timer.
+
+| *Ghost*
+| Ultra-transparent, either always or only while the pointer is near, so you can
+  read what is underneath. Down to invisible, with the audio still running.
+
+| *Click-through*
+| While ghosted, clicks pass through to the page underneath. Hold a modifier
+  (or tap a key) to grab the window itself again. This is what makes "read
+  through it, then click the thing behind it" work.
+
+| *One action, always*
+| On, off and every setting are reachable from the toolbar, a single keystroke,
+  and the window's own handle. No menu archaeology.
+
+| *Keyboard-first*
+| Every behaviour above has a keyboard equivalent. Hover is a convenience, never
+  the only way in -- otherwise it is unusable without a mouse, and unreachable
+  for anyone with a tremor.
 |===
 
-== Where to go next
+== Two things, one idea
 
-* link:docs/architecture/REPOSITORY-MAP.adoc[The repository map] — generated; what every directory is for.
-* link:docs/EXPLAINME.adoc[EXPLAINME] — the engineering deep-dive: how the pieces actually work.
-* link:docs/AFFIRMATION.adoc[AFFIRMATION] — the dated, signed honesty snapshot of the repo's true state.
-* link:docs/AUDIT.adoc[AUDIT] — the release audit gate.
-* link:docs/AI_INSTALLATION_GUIDE.adoc[AI installation guide] — for agents instantiating this template.
-* link:.machine_readable/ai/PLACEHOLDERS.adoc[PLACEHOLDERS] — the full placeholder reference.
+The behaviours split across two delivery vehicles because browsers and operating
+systems allow different amounts of control. Details, and the honest limits of
+each, are in
+link:docs/proposals/INTERACTION-MODEL.adoc#mechanisms[the mechanisms section].
+
+* *A userscript* for the page you are on: an in-page float that can host a video,
+  a panel or a document, with every behaviour above under full control. Works in
+  Tampermonkey-class managers, in Firefox, Chrome and Edge, on Windows and
+  Linux, with no install and no permissions.
+* *An app* for a real, OS-level always-on-top window: true transparency, true
+  click-through, and windows that live above other applications rather than
+  above the page. This is where "float it over Excel while you work in Word"
+  becomes possible.
+
+Both are written in *AffineScript*, and the app is built on
+link:https://github.com/metadatastician/gossamer[gossamer], the estate's
+resource-safe desktop shell. Why that is the right split, what gossamer still
+needs, and what AffineScript's userscript target must add are recorded in
+link:docs/decisions/0004-implementation-language.adoc[ADR-0004].
+
+A browser cannot move, fade or click-through its own picture-in-picture window:
+that window belongs to the browser and the OS. So the choreography has to live
+in one of the two vehicles above. Saying that plainly is more useful than
+pretending a toggle can do it.
+
+== Status
+
+[IMPORTANT]
+====
+*Pre-alpha. Nothing is usable yet.* No userscript has been published, no app has
+been built, and this repository is still mostly scaffolding: it was minted from
+the RSR template on 2026-10-31 and the identity fields are partly unassigned.
+The one thing that *is* real is the specification work below, because that is
+where the design risk is.
+====
+
+What exists today:
+
+* this README -- the problem and the behaviour;
+* link:docs/proposals/INTERACTION-MODEL.adoc[the interaction model] -- states,
+  triggers, settings, accessibility parity, what each platform can actually do;
+* link:docs/proposals/IMPLEMENTATION-LANGUAGE.adoc[the implementation language
+  analysis] -- why the interim is plain JavaScript, why ReScript is not an
+  option, and what AffineScript needs before it can take over;
+* link:docs/TECHNICAL-CONFORMANCE.adoc[the technical statement of conformance]
+  -- the measurable definition of done, kept out of this document on purpose.
+
+== Getting involved
+
+The most useful contribution right now is a *collision report*: which site, which
+page, which control the floating window covered, and what you had to do about it.
+That is the raw material the avoidance rules are built from. Open an issue with
+the URL pattern and the element you were reaching for.
 
 == Licence
 
-Code, configuration and scripts are link:LICENSE[Mozilla Public License 2.0]
+Code, configuration and scripts are link:LICENSE.adoc[Mozilla Public License 2.0]
 (`MPL-2.0`); prose documentation is `CC-BY-SA-4.0`. Both texts live in
 `LICENSES/`, and per-file `SPDX-License-Identifier` headers are authoritative.
-The GitHub-detected licence is MPL-2.0 (the root `LICENSE`). Long-term
-attribution uses Quantum-Safe Provenance — see
-link:docs/legal/EXHIBIT-B-QUANTUM-SAFE.txt[the Quantum-Safe Provenance exhibit].

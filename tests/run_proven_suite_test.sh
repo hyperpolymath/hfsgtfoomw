@@ -31,7 +31,8 @@ for file in scripts/check-escape-hatches.sh scripts/emit-aggregate-inputs.sh \
   scripts/check-hypatia-rule-order.sh \
   .github/hooks/validate-deed.sh .github/hooks/validate-k9.sh \
   tests/proven_suite_test.sh tests/workflows/check_ijson_jcs_test.sh \
-  tests/workflows/squabble_gate_test.sh tests/shape/check_root_shape_test.sh www/tests/run-all.sh; do
+  tests/workflows/squabble_gate_test.sh tests/workflows/check_egress_test.sh \
+  tests/shape/check_root_shape_test.sh www/tests/run-all.sh; do
   mkdir -p "$work/tree/$(dirname "$file")"
   cp "$work/lane" "$work/tree/$file"
 done
@@ -49,7 +50,7 @@ grep -qF 'ALL LANES PASSED' "$work/out" || fail 'missing success outcome'
 jq -e '.schema_version == 1 and .entries[0].provenance == "Static-Checked"
   and .entries[0].proof_ladder == [{proof_file:"src/Proof.idr"}]' \
   "$work/reports with spaces/run.json" >/dev/null || fail 'static report overclaims or loses proof files'
-[[ "$(wc -l < "$LANE_CALLS")" -eq 16 ]] || fail 'clean run did not dispatch all required lanes'
+[[ "$(wc -l < "$LANE_CALLS")" -eq 17 ]] || fail 'clean run did not dispatch all required lanes'
 echo 'PASS: clean runner executes all lanes and emits an honest report at a path with spaces'
 
 FAIL_GATE=check-root-shape.sh run 1 "$runner"
@@ -86,6 +87,19 @@ for gate in check-workflow-edges.sh check-hypatia-ignore.sh check-hypatia-rule-o
   mv "$work/saved-lane" "$work/tree/scripts/$gate"
 done
 echo 'PASS: all three new governance lanes dispatch once, propagate failures, and require their scripts'
+
+# The egress lane is a test file under tests/, not a scripts/ gate, so the loop
+# above cannot cover it; prove it is wired and that its absence is not silent.
+run 0 "$runner"
+[[ "$(grep -cFx 'check_egress_test.sh' "$LANE_CALLS")" -eq 1 ]] || fail 'egress lane must run exactly once'
+FAIL_GATE=check_egress_test.sh run 1 "$runner"
+grep -qF 'SUBJECT FAILURE (1 failing lane(s))' "$work/err" || fail 'egress lane failure was not folded'
+mv "$work/tree/tests/workflows/check_egress_test.sh" "$work/saved-egress"
+run 2 "$runner"
+grep -qF 'missing required gate script: tests/workflows/check_egress_test.sh' "$work/err" \
+  || fail 'egress lane absence was silent'
+mv "$work/saved-egress" "$work/tree/tests/workflows/check_egress_test.sh"
+echo 'PASS: the egress lane dispatches once, folds its failure, and requires its test file'
 
 cat > "$work/bin/idris2" <<'SH'
 #!/usr/bin/env bash

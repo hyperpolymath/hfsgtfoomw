@@ -1,0 +1,147 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= Acceptance run sheet
+:toc:
+
+== What this is for
+
+A row of the platform matrix in link:../TECHNICAL-CONFORMANCE.adoc[TECHNICAL-CONFORMANCE]
+moves off `unverified` only when an **observation** is attached. This page is the
+procedure that produces one, and the shape the observation has to take. It is
+deliberately boring: the point is that two people running it get comparable
+results, so a disagreement is about what was seen and not about the method.
+
+Nothing here is automated. AC-1 … AC-11 say "observed on a real machine, not
+inferred from code" for a reason: the behaviours that matter — focus, obstruction,
+a window the browser owns — cannot be seen from a test runner.
+
+== Before the run
+
+. **The fixture, not a website.** Open
+  `tests/acceptance/fixture/index.html` in the browser under test. It is one
+  self-contained page; it fetches nothing. A live site changes underneath the
+  observer, and then last month's recording cannot be compared with this one.
+. **Record the versions**, because a matrix row without them is a rumour:
+  OS and build, browser name and version, manager name and version, and the
+  fixture's commit (`git log -1 --format=%h -- tests/acceptance/fixture`).
+. **Set the manager to allow file URLs** if the fixture is opened from disk,
+  or serve it locally. If the userscript will not run on `file:`, say so in the
+  sheet — that is itself an AC-10 observation.
+. **Start the recording before the first action** and keep it running for the
+  whole sheet. One recording per run, not one per criterion.
+
+== The run
+
+For each criterion: perform the action, watch for the stated effect, and write
+`pass`, `fail` or `blocked` plus **one sentence** of what was actually seen.
+`blocked` is a legal answer and must say which primitive is missing and what the
+product said about it — AC-10 requires a specific message, so a block with a good
+message is evidence, and a block with a silent nothing is a failure of AC-10.
+
+[cols="1,4,1,3",options="header"]
+|===
+| # | Do this | Result | What was seen
+
+| AC-1
+| From a normal page, trigger the float once with the keyboard, then once again.
+| pass / fail / blocked
+| One action in, one action out. Note the keystroke and whether it is discoverable.
+
+| AC-2
+| Focus the text field in the fixture, type a word, then bring the float into the
+  resting region.
+| pass / fail / blocked
+| Did the caret stay in the field? Did the typed word arrive there?
+
+| AC-3
+| Move the pointer to within ~24 px of the float's edge, and separately put the
+  caret on the line the float covers.
+| pass / fail / blocked
+| Was the focused element clear within a frame or two? Anything covered that you
+  were reading?
+
+| AC-4
+| Hover the float until it becomes the chip, then move the pointer out; then click
+  the chip once while it sits over the fixture's button.
+| pass / fail / blocked
+| Chip size ≤ 48×48 px, restored on pointer-out; the button's state line must
+  still read "button not pressed", and the click log must show one click, not two.
+
+| AC-5
+| Fling the float towards a corner, let it settle, then click it to return.
+| pass / fail / blocked
+| Overshoot beyond 8 px? Did it return on click and on timer expiry?
+
+| AC-6
+| Banish the float, then try to get it back with the keyboard alone.
+| pass / fail / blocked
+| Is a handle of at least 4 px reachable? Does it come back?
+
+| AC-7
+| Enter ghost mode; then turn click-through on and click a link-like target
+  underneath the float.
+| pass / fail / blocked
+| Did the page receive the click (`click log`) and the float receive nothing?
+  Opacity floor reached (default 0.15)? Reversible with one action?
+
+| AC-8
+| Do every action above again without a mouse. Watch the live region in the
+  fixture's probe panel while the state changes.
+| pass / fail / blocked
+| Was every state change announced? Was the announcement useful, or a status word
+  repeated?
+
+| AC-9
+| Leave the float idle for two minutes with the fixture's motion running, then
+  interact repeatedly for one minute.
+| pass / fail / blocked
+| Frames in the last second during interaction (target ≥ 58); memory delta; idle
+  CPU. Whether the network panel shows **any** request — it must show none.
+
+| AC-10
+| Try the paths the browser does not support: Document PiP in a browser without
+  it, click-through anywhere in a page, PiP on a page whose CSP forbids it.
+| pass / fail / blocked
+| Name the exact message shown. "Nothing happened" is a fail.
+
+| AC-11
+| Turn on the OS or browser reduced-motion setting and repeat AC-5.
+| pass / fail / blocked
+| Did travel animation disappear while the state change still happened?
+|===
+
+== One negative control per run
+
+A run sheet that has never produced a `fail` is untested evidence. Before
+finishing, break one thing on purpose and confirm the sheet would have caught it:
+for example disable the dodge and check that AC-3 goes red, or leave the previous
+run's state on screen and confirm you noticed. Record which control you used and
+what it produced.
+
+== Where the evidence goes
+
+`docs/acceptance/<platform>-<YYYY-MM-DD>.adoc`, containing:
+
+* the version block from "Before the run";
+* the completed table above;
+* the negative control and its result;
+* where the recording is (a file in the same directory, or a link, if it can be
+  shared);
+* what the run does **not** establish — one line. Every run has one, and writing
+  it is what keeps the matrix honest.
+
+Then add a row, or change a cell, in the platform matrix in
+link:../TECHNICAL-CONFORMANCE.adoc[TECHNICAL-CONFORMANCE], linking to that file.
+A ticked row with no evidence file is worse than an unticked one, because it
+claims something nobody can check.
+
+== Known limits of this procedure
+
+* One run, one machine, one set of versions. It establishes that the behaviour is
+  reachable, not that it is reliable.
+* The fixture holds no media, so the classic video PiP path is only exercised if
+  you point the `video` element at a local file.
+* The fixture cannot see the native PiP window at all — nothing can (see the
+  mechanisms section of link:../proposals/INTERACTION-MODEL.adoc[the interaction
+  model]). Where the observation depends on that window, the honest result is
+  `blocked`, with the message the product displayed.

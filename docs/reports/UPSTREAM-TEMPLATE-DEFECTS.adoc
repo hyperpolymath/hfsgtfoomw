@@ -1,0 +1,223 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= Upstream defects found by minting this repository
+:toc:
+
+:status: FILED — link:https://github.com/hyperpolymath/rsr-template-repo/issues/268[rsr-template-repo#268]
+ (D1) and link:https://github.com/hyperpolymath/rsr-template-repo/issues/269[#269] (D2),
+ filed 2026-10-31. Every claim here was reproduced, not inferred: the mint ran on
+ this repository on 2026-10-31, and each failing lane was read to its cause.
+
+== Why these exist
+
+`just repo-init` is the only operation that crosses the template/child boundary,
+and it is the only place where "this tree is the template" stops being true.
+Four lanes went red on this branch because of that crossing, not because of
+anything in the branch. Two of them are one defect (D1); the rest are one class
+(D2).
+
+Nothing in the template's own CI can see either: in the template, the files and
+shapes the assertions describe are still present.
+
+== D1. The mint leaves two records naming `build/docs-seed/`
+
+=== Evidence
+
+In a minted child — this repository:
+
+[source,console]
+----
+$ grep -n 'docs-seed' .hypatia-ignore
+structural_drift/SD022:build/docs-seed/
+
+$ test -d build/docs-seed || echo 'build/docs-seed does not exist'
+build/docs-seed does not exist
+
+$ bash scripts/check-hypatia-ignore.sh .
+FAIL: line 26: path 'build/docs-seed/' does not exist in this repository (a stale
+exemption keeps suppressing a path that was renamed, and no longer describes what
+it says)
+check-hypatia-ignore: 1 rule violation(s) in .hypatia-ignore
+----
+
+And the second record, which only shows up once the first is fixed:
+
+[source,console]
+----
+$ bash scripts/check-hypatia-rule-order.sh .
+FAIL: policy classifies module 'structural_drift', but .hypatia-ignore no longer
+exempts it (the policy describes a file that has moved on)
+----
+
+=== Cause
+
+`build/just/repo-init.just` deletes `archetypes/`, `build/docs-seed/` and
+`build/templates/`, and records them in the child's `(variant)` clause under
+`(paths :removed …)`. Two other files describe the same directory and are not
+touched:
+
+. `.hypatia-ignore` — `structural_drift/SD022:build/docs-seed/`, whose stated
+  reason was that the *template's* own `build/docs-seed/` documents hypothetical
+  downstream trees. Stale by the meta-rule `check-hypatia-ignore.sh` rule 3
+  enforces.
+. `.machine_readable/policies/hypatia-rule-order.json` —
+  `observed_modules[] = { module: "structural_drift", layer: 4, rationale:
+  "…fires on build/docs-seed/…" }`. Stale by the cross-check
+  `check-hypatia-rule-order.sh` enforces: a classification whose module the
+  ignore file no longer exempts is refused.
+
+They are coupled: removing either alone leaves the other failing. In CI that is
+two red lanes in the `proven-tests-and-benches` suite on the child's first
+commit — "Hypatia exemption meta-rules" and "Hypatia rule order & clash
+resolution".
+
+=== Fix (this repository)
+
+`.hypatia-ignore` entry removed with a note explaining when a downstream repo
+should re-add it; the `structural_drift` classification removed from the policy
+(commit `4c9628a`, `923af8e`). With `bun` and the pinned standards checkout the
+suite then reports `ALL LANES PASSED` (18 lanes).
+
+=== Fix (upstream)
+
+In `repo-init.just`, next to the existing deletions: drop the
+`structural_drift/SD022:build/docs-seed/` line from `.hypatia-ignore` and the
+`structural_drift` object from the policy's `observed_modules`, and leave a
+one-line note in each saying that a downstream repository which keeps a docs seed
+should re-add both. `.hypatia-ignore` has no conditional syntax, so the mint is
+the only place that can decide this.
+
+== D2. Lanes that assert the template's own shape cannot pass in a child
+
+One class, three instances. Each is a gate whose subject is *the template* while
+its subject line names the child.
+
+=== D2a. The mint e2e's index-mode control (the lane that was red)
+
+The annotation, from the instrumented step:
+
+[source,console]
+----
+PASS: (a-) a child whose tree matches no template commit aborts before writing
+PASS: (b-) a stale mint-verbatim entry stops the mint before it writes
+PASS: the non-interactive mint completes on a Use-this-template child
+PASS: (a) provenance and variant name template commit 1a75203dad11 and its tree, never the child's HEAD
+PASS: (b) the four template-machinery tests are byte-identical and pass in the child
+PASS: (c) ignored files are byte-identical, none created but the arrival-pack artefact; the same content in a repository file was rewritten
+PASS: (d) stage 8 points at the conformance check (green); the drift gate still fails loudly, removals declared
+FAIL: control: index mode no longer shows the pre-commit staleness; this check is vacuous
+----
+
+Every real assertion passes. The failure is the negative control, and it is
+right: `tests/e2e/use_template_mint_test.sh` deletes `archetypes/` from the
+working tree without staging the deletion, regenerates the repository map, and
+requires the `archetypes` row to survive — because the map is generated from the
+index. In a minted tree `archetypes/` is already gone, `rm -rf` is a no-op, and
+there is no row to survive. The control reports itself vacuous, correctly, about
+the template's assumption rather than about the child.
+
+*Fix applied here:* keep `archetypes` as the first candidate and fall back to a
+directory every tree has (`www`, then `benches`); the assertion is unchanged, so
+the control demonstrates the same property on both sides of the boundary
+(commit `704288b`). Verified in a scratch clone that an unstaged deletion of
+`www/` or `benches/` preserves its map row.
+
+*Suggested upstream fix:* take the same patch, or better, do what
+`scripts/check-template-conformance.sh` already does in the opposite direction —
+have the test decide from the tree whether it is the template (`archetypes/`
+present) and select its control accordingly, so the intent is stated rather than
+candidate-listed.
+
+=== D2b. The governance badge test speaks only the template's dialect — and the mint drops the badges
+
+[source,console]
+----
+governance-badge wiring: README still reads the stable raw URL (no match for
+/raw\.githubusercontent\.com/\{\{OWNER\}\}/\{\{REPO\}\}/governance-badges/badges/k9\.json/)
+----
+
+Two defects in one line:
+
+. `tests/workflows/governance_badge_test.sh` greps the README for the *token*
+  form of the badge URL. A minted child's README has already substituted
+  `hyperpolymath/hfsgtfoomw`, so the grep cannot match — the assertion is
+  unsatisfiable in every child, by construction.
+. Worse, the mint *drops the badge block entirely*: `main`'s README carries four
+  badge lines (RSR, the K9 shields endpoint, OpenSSF Best Practices,
+  Scorecard), and the README written by `just repo-init` carries none of them.
+  So children silently lose their K9 conformance badge, and the only thing that
+  notices is a test that then cannot be satisfied.
+
+*Fix applied here:* the three badges whose URLs are derivable from owner and
+repository are restored with the substituted slug (the Best Practices badge stays
+absent with a comment, because it needs a numeric project id and this repository
+is not registered), and the assertion now accepts either the token form or a
+substituted `owner/repo` form — still failing if the line is missing entirely
+(commit `465aa78`). `governance_badge_test.sh` passes, including its firing
+controls.
+
+*Suggested upstream fix:* after the substitution pass, re-render (rather than
+drop) the badge block; and make the assertion accept both forms, since both are
+the same URL in the two shapes a tree can legitimately hold.
+
+=== D2c. The mint leaves `compose.yaml` one quote away from KYAML
+
+[source,console]
+----
+kyaml-format: build/container/compose.yaml is not KYAML — run scripts/kyaml-format.sh build/container/compose.yaml
+----
+
+The template writes the service key as a quoted brace-delimited
+interpolation token, and the quotes are *required* there (a scalar starting with
+`{` must be quoted). Substituting a plain name leaves the
+quotes behind, and KYAML does not permit a quote that is not needed. The patch
+the formatter wants, printed by the gate's own diagnostic:
+
+[source,diff]
+----
+-    "hfsgtfoomw": {
++    hfsgtfoomw: {
+-        "hfsgtfoomw": {
++        hfsgtfoomw: {
+-    "hfsgtfoomw-data": null,
++    hfsgtfoomw-data: null,
+----
+
+*Fix applied here:* the three quotes dropped (commit `b1ac9c9`).
+
+*Suggested upstream fix:* run the formatter as the last step of the mint's
+substitution pass, for every file the pass rewrites. That one change would have
+prevented this and would catch the next instance of the same shape.
+
+=== The general lesson
+
+Every rewrite pass that changes a *value* leaves the *shape* it inherited, and
+the gates that check shape then fail in children and only in children. The
+template cannot see this, because in the template the shape is still correct. If
+one structural change is worth making: after all rewrite passes, re-derive what
+can be re-derived (formatting, badges, maps) and re-check what must be re-checked
+(the two records in D1), then run the template's own gates against the child
+before the mint reports success.
+
+== How these were filed
+
+Both issues are filed against `hyperpolymath/rsr-template-repo`. The body sent for
+each is the D1 and D2 section above, rewritten as Markdown for GitHub (the
+AsciiDoc source blocks above do not render in an issue). They are *not* committed
+as `.md` files: `docs/` is AsciiDoc-only by gate, and `scripts/check-no-md-in-docs.sh`
+enforces it. The links are recorded here rather than a copy, so there is one text
+and not two.
+
+[cols="1,4",options="header"]
+|===
+| Issue | Subject
+
+| link:https://github.com/hyperpolymath/rsr-template-repo/issues/268[#268] (D1)
+| two records naming `build/docs-seed/` survive the mint, so two proven-suite
+  lanes are red in every child
+
+| link:https://github.com/hyperpolymath/rsr-template-repo/issues/269[#269] (D2)
+| three lanes assert the template's own shape and cannot pass in a child: the mint
+  e2e's index-mode control, the governance badge test, and KYAML drift left by the
+  substitution pass
+|===
