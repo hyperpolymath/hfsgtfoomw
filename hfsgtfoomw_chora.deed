@@ -1098,7 +1098,7 @@
     :last-updated "2026-10-31"
     :parent "hyperpolymath/rsr-template-repo"
     ; template tip at mint
-    :parent-pin "UNASSIGNED"
+    :parent-pin "49198f6ff44c90439980b2520af6415efeafe5de"
     :role "minted-repo"
     :stack "unspecified"
     :direction "generated-from-core"
@@ -1114,9 +1114,9 @@
   (provenance
     :minted-at "2026-10-31"
     :template-repo "hyperpolymath/rsr-template-repo"
-    :template-branch "UNASSIGNED"
-    :template-commit "UNASSIGNED"
-    :template-tree "UNASSIGNED"
+    :template-branch "main"
+    :template-commit "49198f6ff44c90439980b2520af6415efeafe5de"
+    :template-tree "db387ba0c8106ab833640dfa7c8cd64d37f39c0f"
     ; Contract: branches this repo is EXPECTED to carry beyond the default.
     ; Empty means default-only. A mint must never inherit template work
     ; branches (coderabbit/, chore/, bot-task or stale branches) — that is
