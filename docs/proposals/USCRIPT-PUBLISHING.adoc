@@ -303,13 +303,12 @@ first release.
 | `veridical-computing` | estate spine
 |===
 
-*Status: approved by the owner on 2026-10-31, not yet applied.* The credential
-this workspace holds can read repository topics but not write them (the topics
-API answers `403 Resource not accessible by integration`), and the set is
+*Status: approved and applied by the owner on 2026-10-31 — all 20 present on the
+repository, verified by reading them back from the API.* The set is
 deliberately not in `.github/settings.yml`: that file is applied to every child
 of the template, so a product topic list there would be inherited by unrelated
-repositories. Apply it once, out of band, as the settings file's own doctrine
-requires:
+repositories. It is therefore set once, out of band, as the settings file's own
+doctrine requires — this is the command that was used, kept as the audit trail:
 
 [source,console]
 ----
