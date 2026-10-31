@@ -7,6 +7,11 @@
 image:https://img.shields.io/badge/status-pre--alpha-orange[Status: pre-alpha]
 image:https://img.shields.io/badge/Code-MPL--2.0-blue.svg?logo=mozilla[Code licence: MPL-2.0,link="https://opensource.org/licenses/MPL-2.0"]
 image:https://img.shields.io/badge/Docs-CC--BY--SA--4.0-blue.svg?logo=creativecommons[Docs licence: CC-BY-SA-4.0,link="https://creativecommons.org/licenses/by-sa/4.0/"]
+image:https://img.shields.io/badge/RSR-Rhodium_Standard-9C27B0[Rhodium Standard Repository,link="https://github.com/hyperpolymath/rhodium-standard-repositories"]
+image:https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/hyperpolymath/hfsgtfoomw/governance-badges/badges/k9.json[K9 conformance,link="https://github.com/hyperpolymath/hfsgtfoomw/actions/workflows/dogfood-gate.yml"]
+image:https://api.scorecard.dev/projects/github.com/hyperpolymath/hfsgtfoomw/badge[OpenSSF Scorecard,link="https://scorecard.dev/viewer/?uri=github.com/hyperpolymath/hfsgtfoomw"]
+// The OpenSSF Best Practices badge is deliberately absent: it needs a numeric
+// project id from bestpractices.dev, which this repository has not registered.
 
 *The thing you are keeping an eye on should get out of the way -- by itself.*
 
