@@ -1,0 +1,565 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= hfsgtfoomw — assessment and solution options
+:toc:
+:toc-placement: preamble
+:status: DRAFT — not ratified, no decision recorded
+
+// Findings in this document were read off the tree at commit 436a9f2 on
+// 2026-10-31. Anything marked "observed" is evidence from this checkout or
+// from the GitHub API on that date; anything marked "judgement" is opinion.
+
+== 0. What the description says, and what the repo is
+
+*Description under review* (GitHub, set 2026-10-30):
+
+[quote]
+____
+Holy - get the - out of my way! Use picture-in-picture and be able to do
+things without another monitor
+____
+
+That is two things welded together: an *emotional spec* (your tools should not be
+in your way) and a *mechanism spec* (picture-in-picture as the escape hatch from
+a single screen). It is a genuinely good product thesis and a genuinely bad
+repository description, because it states a feeling and a technique but not a
+platform, a user, or a definition of done.
+
+*What the repo actually contains* (observed):
+
+[cols="1,3",options="header"]
+|===
+| Fact | Evidence
+
+| It is the RSR template, uninitialised
+| 735 unsubstituted `{{PLACEHOLDER}}` tokens across 101 files; `README.adoc`
+  still carries the template admonition and `just repo-init`; `CITATION.cff`,
+  badges, `CODEOWNERS`, `sonar-project.properties` are all still `{{OWNER}}` /
+  `{{REPO}}`.
+
+| It still believes it is the template
+| The deed is `rsr-template-repo_chora.deed`; `:canonical-name
+  "rsr-template-repo"`, `:repo-uuid #u5"github.com/hyperpolymath/rsr-template-repo"`,
+  `:prefixed-name "rm-rsr-template-repo"`. The deed's own comments record that
+  this exact fault previously made minted repos tell arriving agents they *were*
+  the template (corrected in chronicles-of-slavia and scaffoldia, 2026-07-16).
+
+| It has no product code
+| `src/core/`, `src/bridges/` hold only `.gitkeep`. The rest of `src/` is the
+  template's ABI/FFI example seam (3 `.idr`, 3 `.zig`) and stub READMEs.
+  Grep for `picture-in-picture`, `pip` or `monitor` finds nothing but CI config
+  and unrelated words.
+
+| The only product statement is the README title
+| `= Holy f$£%ing s%£$, get the f$£% out of the way` — the single content change
+  in the repo's history (PR #2). Everything else is inherited.
+
+| Its roadmap is the template's roadmap
+| `docs/status/ROADMAP.adoc` tracks "Phase 2d: julia-library archetype overlay"
+  and "hypatia M-3 SSOT path" — nothing about this product.
+
+| Its gates are not green, despite the "passing on day one" promise
+| On the only push: `Code Quality` and `GitHub Pages` = `startup_failure`
+  (broken workflow file), `OpenSSF Compliance` = `failure`. The rest pass.
+  Because Pages never deployed, the `homepageUrl` the description advertises
+  (`https://hyperpolymath.github.io/hfsgtfoomw/`) has nothing behind it.
+
+| Scale mismatch
+| 518 files, 45 workflows, 166 `.adoc`, 25 `.ncl`, 4 ADRs, Idris proofs, Guix
+  shells — for an app whose entire premise is "get out of my way".
+|===
+
+== 1. What I think
+
+Five observations, in descending order of how much they matter.
+
+=== 1.1 The name is the product, and the repo is its opposite
+
+`hfsgtfoomw` is a memorable, funny, unsearchable name for a real want: *stop
+making me choose between the thing I am doing and the thing I need to see.*
+Then the repo asks the reader to run `just repo-init`, read a 70 KB deed, and
+admire an Idris2 ABI seam before any window moves. The artefact contradicts the
+promise. A tool called "get the fuck out of the way" cannot ship with a
+whitelist-gatekeeper protocol; that is the joke writing itself.
+
+This is fixable and it is the first thing to fix, because reviewers (human and
+agent) read the repo as content-free, and the estate's own gates will agree:
+a repo whose `src/` is empty cannot pass a release audit no matter how many
+workflows are green.
+
+=== 1.2 There is no spec, so there is no "done"
+
+The description names a technique (PiP) rather than a capability. PiP on the
+web is video-only; on the desktop it is not a thing that exists by default.
+Between "I want PiP" and a shipped tool there are at least four unanswered
+questions: which compositor/OS, what content (video call? a document? a log
+tail? a dashboard?), what "out of the way" means when it is on screen, and how
+you dismiss it without alt-tabbing. Without those, every implementation arm
+below looks equally plausible and none can be finished.
+
+=== 1.3 The constraint envelope is stricter than the problem needs
+
+The estate language policy (banned: Python, Go, TypeScript, ReScript, Nix,
+AGPL; JS only via Bun; Guix not Nix) rules out the two fastest routes to a
+window manager toy — Python + `pywinctl`/`ewmh`, and a TypeScript Electron
+overlay. What remains is Rust (already present as `scripts/*.rs`, with a Rust CI
+lane), Zig (declared capability, and the shipped FFI seam), Idris2 (declared),
+Bash (declared) and plain JS (Bun). That is workable — but it means the cheap
+arm is Bash, the serious arm is Rust or Zig, and the "just use a library"
+arm does not exist. Budget accordingly.
+
+=== 1.4 A utility app does not need a *spine*'s governance tier
+
+This repo's own deed declares `:role "spine"` and a near-maximal capability set
+so that *minted* repos can adopt any part of it. A single-purpose desktop
+utility should declare: `cli`, `bash`, maybe `rust` or `zig`, `docs-site` —
+and drop `abi`, `ffi`, `formal-proofs`, `container`, `reproducible-build`,
+`benchmarks`, `governance-tier`. Keeping the maximal set means every new line
+of code must satisfy gates designed for a framework, which is how a one-weekend
+idea becomes a nine-month scaffolding project. Either strip this repo, or mint
+a lean repo from the template and let this one die. (See Option 0.)
+
+=== 1.5 The problem is real and the market proves it
+
+Every OS has a partial answer and none has the whole: macOS "Always on Top"
+via third-party utilities, KDE's *Keep Above*, GNOME's Always-on-Top
+extension, sway's sticky floating windows, Hyprland's `pin`, browser Document
+Picture-in-Picture for web content, and `wl-mirror`/`xpra` for mirroring. That
+is strong evidence the want is real; it is also strong evidence that the win is
+not "invent PiP" but "make the existing primitives one keystroke and stop
+stealing focus". The most elegant product is a *composer*, not a compositor.
+
+== 2. Option 0 — the mandatory precondition (≈1 day)
+
+Nothing below lands cleanly until this is done. It is not a product decision,
+it is hygiene, and none of it is speculative.
+
+. *Initialise the template properly.* Run `just repo-init` non-interactively
+  (`RSR_NON_INTERACTIVE=1 PROJECT_NAME=… REPO=hfsgtfoomw OWNER=hyperpolymath
+  AUTHOR=… AUTHOR_EMAIL=…`). That substitutes all 735 tokens, renames the deed,
+  writes the child `(provenance)` clause, and replaces `README.adoc` with the
+  minted shape.
+. *Then hand-write the README's first two sections.* "What this is" must be a
+  problem statement with a definition of done (§4 below is a starting draft),
+  and "What you get" must list today's actual features, not the template's.
+. *Fix the red gates.* `Code Quality` and `Pages` fail at workflow-parse time —
+  find the malformed file, fix it, and get the Pages site live, since the
+  description already advertises it.
+. *Trim the capability set* in `(rsr-profile)` to what the product actually
+  carries, and trim the workflow fleet to match. "Fail-closed" is only
+  credible if the gates that remain are the ones that can fail.
+. *Record the naming decision.* `hfsgtfoomw` is funny but untypeable and
+  unsearchable; if the tool is ever published, the command name matters more
+  than the repo name (`pipctl`, `pips`, `peek`, `outtatheway`).
+
+*I would do Option 0 first even if every product arm below is rejected*, because
+right now an arriving agent is told it is in `rsr-template-repo` and will act
+accordingly.
+
+== 3. The solution arms
+
+Seven product arms, ordered roughly by cost. Each is scored on: what the user
+gets, platform reach, effort, estate compliance, and the thing most likely to
+kill it.
+
+[cols="1,3,2,1,1,2",options="header"]
+|===
+| # | Arm | Gets you | Effort | Estate fit | Main risk
+
+| A | Config pack
+| PiP behaviour today, via compositor + terminal + browser primitives, installed
+  by one script
+| 1–2 d
+| Bash/Toml — total
+| No window mirroring; tied to each compositor's config language
+
+| B | `pipctl` CLI over compositor IPC
+| One chord → current window floats, pins, snaps to a corner, dims; one chord
+  back
+| 3–5 d
+| Rust/Zig/Bash — total
+| Only "in-estate" windows; no cross-app mirroring
+
+| C | Wayland window-mirror overlay (`pipd`)
+| Any window or screen region, live, always-on-top, non-focus-stealing,
+  cross-desktop via the portal
+| 2–4 w
+| Rust + PipeWire (new `rust` capability)
+| Portal consent flow, dmabuf frame pacing, GNOME/KDE fragmentation
+
+| D | Document PiP browser extension
+| Any web content — docs, dashboards, chat, video — in a real always-on-top
+  window, on any OS
+| 1 w
+| Plain JS + Bun — total
+| Chromium-only; does nothing for native apps
+
+| E | Terminal popup multiplexer
+| The reference/log/shell you need, overlaid inside the terminal; survives SSH
+  and low-power machines
+| 2–3 d
+| Bash — total
+| Only terminal-shaped content
+
+| F | Seam-first: `pip-spec` + pluggable backends
+| A typed control plane (Idris2 state machine + unix-socket schema) that A/B/C/D
+  implement, so backends are interchangeable and provable
+| 1 w + backends
+| Idris2 + Zig — exactly the shipped seam
+| Over-engineering if no second backend ever lands
+
+| G | Adopt, don't build: curated integration pack
+| A tested, pinned, one-command install of `wl-mirror`, compositor rules,
+  GNOME/KDE extensions and the PiP extension — plus a doctor
+| 1 w
+| Bash — total
+| Upstream churn; you are maintaining a knot of other people's code
+|===
+
+=== Arm A — Config pack (the honest minimum)
+
+Ship `pip.toml` (KYAML if needed) plus `just pip-install`, which writes
+compositor rules for pinned floating windows at a fixed corner geometry and
+prints the chords. Sway: `for_window [app_id="…"] floating enable, sticky
+enable, resize set 480 270, move position 100% 0%`. Hyprland: `windowrule =
+float,pin,size 480 270,move 100%-480 0` (syntax depends on version —
+pin the version, don't guess). Terminals: a tmux popup bound to a key.
+
+*Why consider it:* delivers 60–80 % of the felt benefit for two days of work,
+with zero new failure modes, and it establishes the vocabulary (corner, size,
+toggle, never-focus) the later arms reuse.
+*Why not stop here:* it cannot show you content from a window you did not
+launch, which is literally the "without another monitor" ask.
+
+=== Arm B — `pipctl`, a thin controller over compositor IPC
+
+A single binary that takes a window selector (`--app-id`, `--class`,
+`--title`, `--focused`) and does the five things a PiP window actually needs:
+float, pin above, snap to a named corner at a named size, set-opacity, and
+`--toggle`. Talks `hyprctl dispatch` / `swaymsg` on Wayland, `_NET_WM_STATE_ABOVE`
++ `_NET_MOVERESIZE_WINDOW` on X11.
+
+*Estate note:* implement in **Bash first, Zig second**, not Rust — both are
+already declared capabilities, so this arm adds no policy surface and can reuse
+the shipped ABI/FFI seam. Rust is only necessary once you need screen capture.
+
+*This is the arm I would ship in week one*, and it is a strict superset of A:
+the config pack becomes the default profile `pipctl` installs.
+
+=== Arm C — `pipd`, the real thing
+
+An always-on-top layer-shell surface that shows live content of *any* source.
+Two capture routes:
+
+* **xdg-desktop-portal Screencast (PipeWire)** — the standard, works on GNOME,
+  KDE and wlroots. Cost: a consent dialog per source, restored via
+  `restore_token`.
+* **wlr-screencopy / wlr-export-dmabuf** — no prompts, wlroots-only, and what
+  `wl-mirror` already does well.
+
+Then nothing else: no focus stealing (`wlr-layer-shell` without keyboard
+interactivity), corner-snapped geometry, click-through or click-to-raise as a
+policy flag, one chord to toggle.
+
+*This is the arm that actually answers the description*, and it is also the arm
+where "build" is questionable — see G. If it is built, the honest scope is one
+compositor family first (wlroots), portal second, GNOME/KDE "works via portal,
+untested" third.
+
+=== Arm D — Document Picture-in-Picture extension
+
+`documentPictureInPicture.requestWindow()` puts *arbitrary DOM* in a real
+always-on-top window (Chrome/Chromium 116+, Edge); the shipped video PiP cannot
+do this. An MV3 extension with a keyboard command can offer: "PiP this
+element/media/video/whole page region", a `pip-all` that pipes any tab, and a
+selector to re-target. Plain JS, Bun build, one `package.json` with the
+estate-mandated lock coverage.
+
+*Why it may be the best value per hour:* most of what people need a second
+monitor for during focused work is *web content* — docs, PRs, a dashboard, a
+call, a log viewer. This arm needs no compositor work, no capture plumbing, no
+privileges, and works identically on macOS, Windows, Linux, GNOME, KDE and
+sway. The FK is real and unfixable: Chromium only, and it cannot mirror a
+native window.
+
+=== Arm E — Terminal popup multiplexer
+
+If the work happens in a terminal, the "second monitor" is a popup: tmux
+`display-popup` (or zellij float, WezTerm overlay) bound to one chord, running
+a scratch shell, a log tail, or a doc pager, sized and placed deterministically,
+with per-project persistence.
+
+*Cheapest real win*, and the only arm that still works over SSH, in a container,
+or on a locked-down machine. It is also the natural fallback when C is
+unavailable.
+
+=== Arm F — Seam-first (`pip-spec`)
+
+Define the control plane once: a typed state machine (Idris2) —
+`Closed → Visible(source, geometry, pinned) → Hidden` with the invariants that
+matter ("never takes keyboard focus", "geometry is inside the work area",
+"toggle is idempotent") — plus a tiny unix-socket schema for `pipctl` /
+`pipd` / the extension to share. Backends implement it; A/B/C/D/E become
+interchangeable.
+
+*Why it's the elegant arm:* it is the estate's own doctrine (typed seam, proofs
+at the boundary) applied to something that actually needs it — every desktop
+integration is an unreliable external dependency, and a spec is how you keep
+them honestly swappable. It is also the reason the answer to "which platform"
+does not have to be decided in advance.
+*Why not first:* a seam with one implementation is speculation. Land B (or E),
+then extract F from the second backend's real needs.
+
+=== Arm G — Adopt, don't build
+
+The most underrated arm. `wl-mirror` already mirrors an output or a toplevel
+into a layer-shell surface; compositors already pin and float; GNOME/KDE already
+have always-on-top; browsers already have Document PiP. The missing 20 % is
+*one chord, one geometry, one policy, one installer, one doctor* — which is
+exactly what a repo is good at.
+
+Ship: `just install` (detects compositor/OS, installs pinned upstream versions,
+writes rules), `just doctor` (verifies each primitive works and reports which
+degraded), and a compatibility matrix with dates. The repo becomes
+`get-out-of-the-way`: the shortest path from "single screen" to "the thing I
+need is in the corner and I never lost my place".
+
+*Risk:* you own the integration surface of other people's releases. Mitigate by
+pinning, by an explicit tested-version matrix, and by making "unsupported" a
+loud, honest failure rather than a silent no-op.
+
+== 4. A definition of done (draft, for the README)
+
+Whoever owns the product should ratify something like this, because every arm
+above is judged against it:
+
+. From a normal single-window workspace, *one chord* makes a ~480×270 window
+  appear in a chosen corner showing live content from another source.
+. It *never* takes keyboard focus; typing continues in the main window
+  uninterrupted (this is the "get out of my way" test, and it is the test most
+  naive implementations fail).
+. One chord hides it; the chord is idempotent; state survives a restart of both
+  the overlay and the desktop session where the platform allows it.
+. Deterministic geometry: same corner, same size, no drift across workspace
+  switches or monitor hot-plug.
+. Budgets: <100 ms to appear, <30 MB RSS, <1 % idle CPU, zero network egress,
+  zero telemetry.
+. Unsupported platform ⇒ a specific error naming the missing primitive, never a
+  silent no-op.
+. Fallback ladder: overlay → pinned floating window → terminal popup → printed
+  instructions. The feature degrades; it does not vanish.
+
+== 5. Recommendation
+
+*Recommended (the elegant arm, per estate doctrine):* **Option 0 → B → G → C**,
+with **D** in parallel if most of the content is web, and **F** extracted only
+when C exists.
+
+Rationale, in one line each:
+
+* *Option 0* because the repo currently misrepresents itself to every agent and
+  human that opens it.
+* *B* because it is the smallest thing that changes behaviour, needs no new
+  capabilities, and defines the vocabulary.
+* *G* because the primitives exist and this repo's real value is composition
+  plus honesty about what works.
+* *C* because it is the only arm that fulfils "without another monitor" for
+  native windows, and it should be entered with G's integration knowledge in
+  hand, not from a standing start.
+* *D* because it is the highest value per hour for web content and it costs the
+  estate nothing policy-wise.
+
+*Departure I'd flag:* the doctrine prefers the most elegant long-term option,
+and that is F (seam-first). I am deliberately *not* recommending F first: a
+typed seam with one backend is a proof about a system that does not exist.
+Land B and E, let C be the second backend, then extract F with evidence. That
+is the departure, stated rather than absorbed.
+
+**Phased plan**
+
+[cols="1,2,3",options="header"]
+|===
+| When | What | Exit test
+
+| Day 1
+| Option 0
+| `just doctor` passes; zero `{{` in the tree; Pages live; the two red lanes
+  green or deleted with a recorded reason
+
+| Week 1
+| Arm B (`pipctl`) + Arm E (terminal popup) + README rewritten to §4
+| The seven acceptance tests in §4 pass on the owner's machine; demo recorded
+
+| Week 2–3
+| Arm G integration pack + compatibility matrix + `just doctor`
+| Three supported platforms verified, each with a dated row
+
+| Month 2
+| Arm C on one compositor family
+| Test 1 and 2 of §4 pass for a *native* window, with <1 % idle CPU
+
+| Month 2–3
+| Arm D extension
+| Any YouTube/Docs/Jira tab in a real PiP window, one chord, any OS
+
+| Later
+| Arm F extracted from C+D
+| Two backends pass the same state-machine conformance suite
+|===
+
+NOTE: The owner recorded platform priorities on 2026-10-31 that reorder this
+plan. Read §8 before acting on the table above.
+
+== 6. What would make me abandon an arm
+
+* *C by hand* if `wl-mirror` plus a wrapper already satisfies §4 on wlroots —
+  then C collapses into G and the repo keeps its "compose, don't reimplement"
+  integrity.
+* *D* if the owner's content is native apps (it is not a browser problem).
+* *B* if the owner's compositor has no usable IPC (then it is A + E only).
+* *Everything except E* if the real environment is SSH, a container or a
+  locked-down corporate machine.
+* *The whole repo* if the answer to "who is this for" is "only me, once" —
+  then a dotfiles PR is the correct artefact and the RSR spine is pure overhead.
+
+== 7. Questions the owner has to answer
+
+. Which environment is primary: Hyprland, sway/wlroots, GNOME, KDE, X11, macOS,
+  Windows/WSL, or several?
+. What is behind the PiP window most of the time: video/meetings, web docs and
+  dashboards, a terminal/log tail, a native app, or all four?
+. Is this a personal tool, or something to publish as a product with users?
+. Build or adopt — is writing the capture plane the point, or is a working
+  desktop the point?
+
+// Answer these before any code lands; each one eliminates an entire arm.
+
+== 8. Revision 2 - owner priorities recorded 2026-10-31
+
+[cols="1,2",options="header"]
+|===
+| Question | Answer
+
+| Platform order
+| *Windows first* (Edge, Firefox and the like), then *mobile*, then *Linux*,
+  then *macOS*
+| Dominant content
+| A mix: web content, native windows and terminal/logs
+| Audience
+| Something to publish, not only a personal tool
+|===
+
+This inverts the recommendation in §5, which led with compositor work because
+that is where the desktop primitives are richest. Two of the three top targets
+change what is buildable at all, so the reasoning is restated rather than
+quietly re-ordered.
+
+=== 8.1 Windows is better news than expected
+
+*Arm D moves from "in parallel" to first.* Document Picture-in-Picture - an
+always-on-top browser window carrying *arbitrary* DOM, not just video - is no
+longer Chromium-only. Chrome and Edge have shipped it since 116, and Firefox
+shipped it in 151 (May 2026). That covers the owner's stated browsers on the
+stated platform. Safari still does not support it, on any OS.
+
+*Why this is the right first arm on Windows:*
+
+* It needs no capture permission, no installer, no admin rights and no native
+  code path: one extension, plain JavaScript, Bun build - inside the estate's
+  language policy with nothing to declare.
+* It is the only arm that reaches Edge, Chrome and Firefox with one artefact.
+* Publishing an extension is a store review, not a platform port; the repo
+  already carries the policy and `.well-known` scaffolding a listing asks for.
+* The two failure modes are bounded and known: Chromium-only until Firefox 151,
+  and nothing at all on mobile (§8.2).
+
+*Windows native windows* (the "native app" part of the mix) are not reachable
+from a browser. That is the Windows shape of arm C: `SetWindowPos` with
+`HWND_TOPMOST` for the always-on-top window, `Windows.Graphics.Capture` for the
+content, in a small Rust or Zig helper. It is second on Windows, not first,
+because it costs a signed binary to do what the extension does for free.
+
+=== 8.2 Mobile is a different product, and saying so early saves a quarter
+
+This is the part where the description's promise cannot be kept as written, and
+pretending otherwise is how projects die.
+
+[cols="1,2,2",options="header"]
+|===
+| Platform | Is arbitrary PiP possible? | What "our" PiP can actually be
+
+| Android
+| *No* for other apps. Yes for our own.
+| The OS floats an *activity* (API 26+), and only that app's own activity can
+  ask to float. So the mobile product is a viewer app that hosts the content it
+  is given, then enters PiP on the home gesture.
+
+| iOS / iPadOS
+| *No*, at all.
+| Only video we own can float (`AVPictureInPictureController`). No third-party
+  floating window exists; this is an OS rule, not an arm we forgot.
+
+| Mobile browsers
+| *No.*
+| Document PiP is unsupported in Chrome for Android and Firefox for Android.
+  The classic video PiP API works, which means video only, inside the page.
+|===
+
+Consequences worth accepting deliberately:
+
+* The shared surface across desktop and mobile is the *"put this in a floating
+  window" action*, not the overlay itself. The command vocabulary (`pip this`,
+  `pip out`, corner/size) still transfers; the mechanism does not.
+* Android is a native shell - Kotlin or Java around a WebView - which is a new
+  capability for the deed's `(rsr-profile)` and a language the estate has never
+  carried. That is a policy decision for the owner, not a technical one.
+* The honest mobile claim is: "your app's content can float; other apps'
+  windows cannot". A README that says otherwise will be wrong in public.
+
+=== 8.3 The reordered plan
+
+[cols="1,2,3",options="header"]
+|===
+| When | What | Exit test
+
+| Week 0
+| Option 0 (§2) - initialise the template, kill the `{{...}}` tokens, repair the
+  red lanes
+| `just doctor` passes; zero `{{` in the tree; Pages live
+| Week 1-3
+| *Arm D on Windows*: MV3 extension, Document PiP for web content, keyboard
+  command, corner/size persistence, a Firefox 151+ and Chromium fallback path
+| Any Edge/Firefox/Chrome tab floated in one chord on Windows; §4 tests 1-3
+| Week 3-4
+| *Arm E* (terminal popup), because it is the only arm that reaches every
+  platform including WSL, and costs days
+| Reference/logs float without capture permission
+| Month 2
+| *Arm C, Windows shape*: native always-on-top + `Windows.Graphics.Capture`
+| §4 test 2 (no focus theft) passes for a native window on Windows
+| Month 2-3
+| *Android viewer app*: hosts content, Activity PiP on home gesture
+| PiP survives the home gesture; playback continues; a PiP action set works
+| Month 3
+| *Linux*: arm B, then arm C as originally planned in §3
+| §4 on wlroots; portal path for GNOME/KDE
+| Later
+| *macOS last*, as the owner ranked it - Safari cannot do the web arm, so the
+  native overlay is the only route
+| §4 tests 1-3 on macOS, with the ScreenCaptureKit permission flow
+|===
+
+*What I would not build yet:* arm F. With four backends now known to be
+necessary - web, Windows native, Android, Linux - the seam is justified, but it
+should be extracted from the second and third implementations, not invented
+ahead of them. The state machine in §3/F is already the draft.
+
+=== 8.4 The one thing that changes in the repo today
+
+The gate in `scripts/check-adoc-macros.sh` is not part of this product; it is
+hygiene that was needed before any of the above is written. It catches the class
+of defect that made this README's own badges disappear: text that parses
+cleanly, so the render gate cannot see it. It found nine instances in two files
+on its first run - the dead badges in `README.adoc` and Markdown links in
+`CODE_OF_CONDUCT.adoc` and `.github/GOVERNANCE.adoc` - and runs in
+`.github/workflows/estate-rules.yml` behind its own planted-positive self-test.

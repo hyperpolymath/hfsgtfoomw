@@ -63,6 +63,15 @@ jobs:
         run: bash tests/workflows/check_adoc_renders_test.sh
       - name: Every tracked .adoc renders clean
         run: bash scripts/check-adoc-renders.sh .
+      # The render gate compares stderr, so it is blind to text that is not a
+      # macro at all: an image with an empty target, or a Markdown link, parses
+      # perfectly and renders as literal punctuation. Both shipped in this repo
+      # (README.adoc's dead badges, CODE_OF_CONDUCT.adoc's Markdown links), so
+      # the check is planted-positive first.
+      - name: AsciiDoc macro gate self-test (planted broken macros must fail)
+        run: bash tests/workflows/check_adoc_macros_test.sh
+      - name: No broken AsciiDoc macros or Markdown links
+        run: bash scripts/check-adoc-macros.sh .
       - name: No V-language references
         run: bash scripts/check-no-vlang.sh .
       # Was written but wired to nothing, so it had never run in CI.

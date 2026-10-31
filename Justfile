@@ -182,6 +182,12 @@ bench-check:
 ijson-check:
     bash scripts/check-ijson-jcs.sh --enforce .
 
+# Check tracked .adoc for text that parses but is not a macro: an image with an
+# empty target (`image:[...]`) or a Markdown link (`[text](url)`). The render
+# gate cannot see either, because neither is a parse error.
+adoc-macros:
+    bash scripts/check-adoc-macros.sh .
+
 # Run readiness tests (Component Readiness Grade: D/C/B)
 readiness:
     # TODO: Replace with your readiness test command. Examples:
