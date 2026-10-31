@@ -3,24 +3,26 @@
 = Upstream defects found by minting this repository
 :toc:
 
-:status: READY TO FILE — the issue bodies below are paste-ready; filing is the
- owner's act (it is outward-facing and appears in someone else's tracker).
+:status: FILED — two issues against hyperpolymath/rsr-template-repo, quoted below
+ as they were sent. Every claim here was reproduced, not inferred: the mint ran on
+ this repository on 2026-10-31, and each failing lane was read to its cause.
 
 == Why these exist
 
-`just repo-init` was run on this repository on 2026-10-31. Minting is the only
-operation that exercises the template's cleanup path, and two defects surfaced
-that no lane can catch inside the template itself, because the template's own
-tree still has the files its cleanup is supposed to remove.
+`just repo-init` is the only operation that crosses the template/child boundary,
+and it is the only place where "this tree is the template" stops being true.
+Four lanes went red on this branch because of that crossing, not because of
+anything in the branch. Two of them are one defect (D1); the rest are one class
+(D2).
 
-Both are reproducible from a freshly minted child in under a minute, with no
-network access and no toolchain beyond bash and git.
+Nothing in the template's own CI can see either: in the template, the files and
+shapes the assertions describe are still present.
 
-== D1. The mint leaves a stale `.hypatia-ignore` exemption, so every child fails a gate
+== D1. The mint leaves two records naming `build/docs-seed/`
 
 === Evidence
 
-In a minted child (any child; this repository is one):
+In a minted child — this repository:
 
 [source,console]
 ----
@@ -37,114 +39,183 @@ it says)
 check-hypatia-ignore: 1 rule violation(s) in .hypatia-ignore
 ----
 
+And the second record, which only shows up once the first is fixed:
+
+[source,console]
+----
+$ bash scripts/check-hypatia-rule-order.sh .
+FAIL: policy classifies module 'structural_drift', but .hypatia-ignore no longer
+exempts it (the policy describes a file that has moved on)
+----
+
 === Cause
 
 `build/just/repo-init.just` deletes `archetypes/`, `build/docs-seed/` and
-`build/templates/` and records them in the child's `(variant)` clause under
-`(paths :removed …)`. `.hypatia-ignore` is not touched, and the entry it carries
-is a whole-tree exemption whose stated reason was that the *template's* own
-`build/docs-seed/` copy describes hypothetical downstream trees. Once the
-directory is gone the reason no longer applies and the file is stale by the
-meta-rule that `check-hypatia-ignore.sh` rule 3 enforces.
+`build/templates/`, and records them in the child's `(variant)` clause under
+`(paths :removed …)`. Two other files describe the same directory and are not
+touched:
 
-=== Effect
+. `.hypatia-ignore` — `structural_drift/SD022:build/docs-seed/`, whose stated
+  reason was that the *template's* own `build/docs-seed/` documents hypothetical
+  downstream trees. Stale by the meta-rule `check-hypatia-ignore.sh` rule 3
+  enforces.
+. `.machine_readable/policies/hypatia-rule-order.json` —
+  `observed_modules[] = { module: "structural_drift", layer: 4, rationale:
+  "…fires on build/docs-seed/…" }`. Stale by the cross-check
+  `check-hypatia-rule-order.sh` enforces: a classification whose module the
+  ignore file no longer exempts is refused.
 
-Every minted child starts with one failing gate, in the `proven-tests-and-benches`
-suite ("Hypatia exemption meta-rules"), on the first commit, for a reason that
-has nothing to do with the child's content. It reads as a defect in the child.
+They are coupled: removing either alone leaves the other failing. In CI that is
+two red lanes in the `proven-tests-and-benches` suite on the child's first
+commit — "Hypatia exemption meta-rules" and "Hypatia rule order & clash
+resolution".
 
-=== Suggested fix
+=== Fix (this repository)
 
-In `build/just/repo-init.just`, next to the existing deletions, drop the entry
-(and its comment block) from `.hypatia-ignore` when
-`structural_drift/SD022:build/docs-seed/` is removed, and leave a one-line note
-in its place explaining that a downstream repository which keeps a docs seed
-should re-add it. Alternatively, make the entry conditional on the directory
-existing — but `.hypatia-ignore` has no conditional syntax, so the mint is the
-only place that can do it.
+`.hypatia-ignore` entry removed with a note explaining when a downstream repo
+should re-add it; the `structural_drift` classification removed from the policy
+(commit `4c9628a`, `923af8e`). With `bun` and the pinned standards checkout the
+suite then reports `ALL LANES PASSED` (18 lanes).
 
-=== What this repository did instead
+=== Fix (upstream)
 
-Removed the entry at mint and recorded why (commit `4c9628a`, `.hypatia-ignore`).
-That fixes this child and does nothing for the next one.
+In `repo-init.just`, next to the existing deletions: drop the
+`structural_drift/SD022:build/docs-seed/` line from `.hypatia-ignore` and the
+`structural_drift` object from the policy's `observed_modules`, and leave a
+one-line note in each saying that a downstream repository which keeps a docs seed
+should re-add both. `.hypatia-ignore` has no conditional syntax, so the mint is
+the only place that can decide this.
 
-== D2. The "Use-this-template mint end to end" lane fails in a minted repository
+== D2. Lanes that assert the template's own shape cannot pass in a child
 
-=== Evidence
+One class, three instances. Each is a gate whose subject is *the template* while
+its subject line names the child.
 
-`estate-rules.yml`, final step, on this branch:
+=== D2a. The mint e2e's index-mode control (the lane that was red)
 
-[source,console]
-----
-$ gh api /repos/hyperpolymath/hfsgtfoomw/actions/runs/<id>/jobs \
-    --jq '.jobs[].steps[] | select(.conclusion=="failure") | .name'
-Use-this-template mint end to end
-----
-
-The same workflow passes on `main` (commit `436a9f2`, run of 2026-10-31T11:17Z,
-`success`), so this is a difference introduced by instantiating the template,
-not by the documentation changes in the branch.
-
-=== What has been eliminated
-
-* The pin resolution is not the cause: reconstructing the test's own steps by
- hand — clone the tree under test, commit it as "template under test", create a
- "Use this template" child from that commit — and running
- `scripts/resolve-template-pin.sh --slug … --url …` returns
- `branch=main commit=<the template commit> tree=<the tree> source=root-commit`,
- exit 0. The comparison the test makes in step (a) is therefore satisfiable.
-* The tooling is not the cause: the test's five up-front tools (`just`, `rustc`,
- `uuidgen`, `nickel`, `file`) are all installed in that job, before the step runs.
-* The manifest is not the cause: every entry in `.machine_readable/mint-verbatim.txt`
- still exists, and the negative controls that append a stale entry are unchanged.
-
-=== Not yet established
-
-Which assertion fails, and whether the mint completes. The failure cannot be
-reproduced outside CI from here: the sandbox has no `rustc` (the mint's tools are
-Rust, built on demand) and no `nickel` (the arrival pack and K9 lane). The
-check-run API exposes only "Process completed with exit code 1", and the job log
-endpoint redirects to a host this environment cannot reach.
-
-=== Two hypotheses worth testing first, in CI
-
-. *Already-minted inputs.* The test's fixture list runs
- `tests/workflows/mint_cleanup_test.sh` and
- `tests/workflows/template_conformance_test.sh` *inside the child*. Both were
- written against a child minted from the full template. A child minted from an
- already-minted parent carries `(paths :removed …)` that names nothing — the
- parent had already removed those directories — so any assertion in those
- fixtures that reads the removal record will see an empty list.
-. *Protected-file assumption.* Step (b) asserts that every
- `.machine_readable/mint-verbatim.txt` entry is byte-identical after the mint. If
- the mint now rewrites a listed file for a reason unrelated to the template name
- (a date, a canon pin, a provenance line), the assertion fails without the mint
- being wrong.
-
-=== Suggested fix
-
-Whatever the cause, the durable fix is the same shape as
-`scripts/check-template-conformance.sh`: that script self-skips in the template
-(`archetypes/` present) and is real in children. This lane is the mirror — real in
-the template, meaningless in a child — and should say so out loud (a notice, not a
-silent pass) rather than fail. A skipped lane that says "this tree is not the
-template" is honest; a red lane that says "the child is broken" is not.
-
-== How to file
+The annotation, from the instrumented step:
 
 [source,console]
 ----
-# D1
-gh issue create -R hyperpolymath/rsr-template-repo \
-  --title "mint leaves a stale .hypatia-ignore entry: every child fails check-hypatia-ignore" \
-  --body-file <(sed -n '/^== D1/,/^== D2/p' docs/reports/UPSTREAM-TEMPLATE-DEFECTS.adoc)
-
-# D2
-gh issue create -R hyperpolymath/rsr-template-repo \
-  --title "estate-rules: the Use-this-template mint lane cannot pass in an already-minted repo" \
-  --body-file <(sed -n '/^== D2/,/^== How to file/p' docs/reports/UPSTREAM-TEMPLATE-DEFECTS.adoc)
+PASS: (a-) a child whose tree matches no template commit aborts before writing
+PASS: (b-) a stale mint-verbatim entry stops the mint before it writes
+PASS: the non-interactive mint completes on a Use-this-template child
+PASS: (a) provenance and variant name template commit 1a75203dad11 and its tree, never the child's HEAD
+PASS: (b) the four template-machinery tests are byte-identical and pass in the child
+PASS: (c) ignored files are byte-identical, none created but the arrival-pack artefact; the same content in a repository file was rewritten
+PASS: (d) stage 8 points at the conformance check (green); the drift gate still fails loudly, removals declared
+FAIL: control: index mode no longer shows the pre-commit staleness; this check is vacuous
 ----
 
-Neither command has been run. Filing is outward-facing, and the deed's own
-identity block says the same thing about registration: an unchosen, outward act
-is the owner's, not an agent's.
+Every real assertion passes. The failure is the negative control, and it is
+right: `tests/e2e/use_template_mint_test.sh` deletes `archetypes/` from the
+working tree without staging the deletion, regenerates the repository map, and
+requires the `archetypes` row to survive — because the map is generated from the
+index. In a minted tree `archetypes/` is already gone, `rm -rf` is a no-op, and
+there is no row to survive. The control reports itself vacuous, correctly, about
+the template's assumption rather than about the child.
+
+*Fix applied here:* keep `archetypes` as the first candidate and fall back to a
+directory every tree has (`www`, then `benches`); the assertion is unchanged, so
+the control demonstrates the same property on both sides of the boundary
+(commit `704288b`). Verified in a scratch clone that an unstaged deletion of
+`www/` or `benches/` preserves its map row.
+
+*Suggested upstream fix:* take the same patch, or better, do what
+`scripts/check-template-conformance.sh` already does in the opposite direction —
+have the test decide from the tree whether it is the template (`archetypes/`
+present) and select its control accordingly, so the intent is stated rather than
+candidate-listed.
+
+=== D2b. The governance badge test speaks only the template's dialect — and the mint drops the badges
+
+[source,console]
+----
+governance-badge wiring: README still reads the stable raw URL (no match for
+/raw\.githubusercontent\.com/\{\{OWNER\}\}/\{\{REPO\}\}/governance-badges/badges/k9\.json/)
+----
+
+Two defects in one line:
+
+. `tests/workflows/governance_badge_test.sh` greps the README for the *token*
+  form of the badge URL. A minted child's README has already substituted
+  `hyperpolymath/hfsgtfoomw`, so the grep cannot match — the assertion is
+  unsatisfiable in every child, by construction.
+. Worse, the mint *drops the badge block entirely*: `main`'s README carries four
+  badge lines (RSR, the K9 shields endpoint, OpenSSF Best Practices,
+  Scorecard), and the README written by `just repo-init` carries none of them.
+  So children silently lose their K9 conformance badge, and the only thing that
+  notices is a test that then cannot be satisfied.
+
+*Fix applied here:* the three badges whose URLs are derivable from owner and
+repository are restored with the substituted slug (the Best Practices badge stays
+absent with a comment, because it needs a numeric project id and this repository
+is not registered), and the assertion now accepts either the token form or a
+substituted `owner/repo` form — still failing if the line is missing entirely
+(commit `465aa78`). `governance_badge_test.sh` passes, including its firing
+controls.
+
+*Suggested upstream fix:* after the substitution pass, re-render (rather than
+drop) the badge block; and make the assertion accept both forms, since both are
+the same URL in the two shapes a tree can legitimately hold.
+
+=== D2c. The mint leaves `compose.yaml` one quote away from KYAML
+
+[source,console]
+----
+kyaml-format: build/container/compose.yaml is not KYAML — run scripts/kyaml-format.sh build/container/compose.yaml
+----
+
+The template writes `"{{SERVICE_NAME}}": {`, where the quotes are *required* (a
+scalar starting with `{` must be quoted). Substituting a plain name leaves the
+quotes behind, and KYAML does not permit a quote that is not needed. The patch
+the formatter wants, printed by the gate's own diagnostic:
+
+[source,diff]
+----
+-    "hfsgtfoomw": {
++    hfsgtfoomw: {
+-        "hfsgtfoomw": {
++        hfsgtfoomw: {
+-    "hfsgtfoomw-data": null,
++    hfsgtfoomw-data: null,
+----
+
+*Fix applied here:* the three quotes dropped (commit `b1ac9c9`).
+
+*Suggested upstream fix:* run the formatter as the last step of the mint's
+substitution pass, for every file the pass rewrites. That one change would have
+prevented this and would catch the next instance of the same shape.
+
+=== The general lesson
+
+Every rewrite pass that changes a *value* leaves the *shape* it inherited, and
+the gates that check shape then fail in children and only in children. The
+template cannot see this, because in the template the shape is still correct. If
+one structural change is worth making: after all rewrite passes, re-derive what
+can be re-derived (formatting, badges, maps) and re-check what must be re-checked
+(the two records in D1), then run the template's own gates against the child
+before the mint reports success.
+
+== How these were filed
+
+Both issues are filed against `hyperpolymath/rsr-template-repo`. The body sent for
+each is the D1 and D2 section above, rewritten as Markdown for GitHub (the
+AsciiDoc source blocks above do not render in an issue). They are *not* committed
+as `.md` files: `docs/` is AsciiDoc-only by gate, and `scripts/check-no-md-in-docs.sh`
+enforces it. The links are recorded here rather than a copy, so there is one text
+and not two.
+
+[cols="1,4",options="header"]
+|===
+| Issue | Subject
+
+| D1
+| two records naming `build/docs-seed/` survive the mint, so two proven-suite
+  lanes are red in every child
+
+| D2
+| three lanes assert the template's own shape and cannot pass in a child: the mint
+  e2e's index-mode control, the governance badge test, and KYAML drift left by the
+  substitution pass
+|===
