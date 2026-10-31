@@ -13,17 +13,13 @@
 # below carries a stated reason. Prefer fix-the-code or an inline directive
 # over an entry here; this file is for whole-file/directory exemptions.
 
-# ─── build/docs-seed/ describes DOWNSTREAM repos, not this one ─────────────
+# ─── no build/docs-seed/ exemption here ──────────────────────────────────────
 #
-# `build/docs-seed/` is the canonical template of documentation that gets
-# copied into scaffolded repos. Its example paths (e.g. `src/middleware/…`,
-# `src/main.rs`) describe a hypothetical generated project, so they
-# legitimately do not resolve against this template's own tree. SD022
-# (stale `src/<dir>/` reference) is therefore a structural false positive
-# for everything under this directory — mirrors the built-in CHANGELOG.md
-# and third_party/ carve-outs. Scaffolded repos inherit this file, so the
-# exemption travels with the template.
-structural_drift/SD022:build/docs-seed/
+# The template ships `structural_drift/SD022:build/docs-seed/` because its own
+# `build/docs-seed/` copy describes hypothetical downstream trees. `just
+# repo-init` deletes `build/` from a minted repo, so the exemption outlives the
+# path it excuses: check-hypatia-ignore.sh rule 3 flags it as stale. Removed at
+# mint rather than carried. Downstream repos that keep a docs seed re-add it.
 
 # ─── Research-extension workflow findings ───────────────────────────────────────
 #

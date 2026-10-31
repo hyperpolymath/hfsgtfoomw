@@ -83,13 +83,13 @@
   (identity
     :primary-forge github
     :owner "hyperpolymath"
-    :prefixed-name "UNASSIGNED-hfsgtfoomw")
+    :prefixed-name "ap-hfsgtfoomw")
   (clade
-    :primary UNASSIGNED
-    :primary-name "UNASSIGNED"
+    :primary ap
+    :primary-name "Applications"
     :secondary ()
     :assigned "2026-10-31"
-    :rationale "")
+    :rationale "The deliverable is an end-user application — a userscript/overlay that keeps a floating video window out of the way of the work underneath it — not a library, a language or a governance tool. Implementation language and proof obligations do not move the clade: the primary clade states the core value proposition (standards 1-formats/deed/mappings/clade-to-repo-deed.adoc).")
   (forges
     :github "hyperpolymath/hfsgtfoomw")
   ; :type is one of standalone monorepo monorepo-child inflated deflated hub
@@ -349,9 +349,9 @@
     (identity
       :project "Get Out of the Way"
       ; language | library | service | tool
-      :kind "UNASSIGNED"
+      :kind "tool"
       :one-sentence "Stop the picture-in-picture window from getting in the way of your work."
-      :domain "UNASSIGNED")
+      :domain "web")
     (semantic-authority
       :policy "canonical"
       :owns (
