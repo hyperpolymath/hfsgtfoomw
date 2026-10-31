@@ -1,0 +1,271 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= Next work: from "written down" to "certainly true"
+:toc:
+
+:status: PROPOSED — for owner sign-off; nothing here is a commitment until the
+ owner says so.
+:date: 2026-10-31
+
+== 0. What this document is for
+
+The question was whether the work *certainly* meets its requirements. It does
+not, yet, and the honest answer is a ledger rather than a reassurance. This
+document says which parts are proven, which are only written down, and what has
+to exist before "certainly" is a claim anyone can make. It then lists the work
+that can run in parallel, because most of it does not need the same person or
+the same machine.
+
+== 1. The evidence ladder
+
+Four rungs. A requirement is only met at the rung it has actually reached.
+
+[cols="1,2,3",options="header"]
+|===
+| Rung | Means | How it is broken
+
+| asserted
+| A document says it. Nothing checks it.
+| Someone edits the document and the claim quietly stops being true.
+
+| linted
+| A gate reads the artifact and fails closed on a defect it can see.
+| The gate only sees shape. It cannot see behaviour.
+
+| executed
+| A test runs the real thing on a machine, with a negative control beside it.
+| It ran on one machine, once, with one browser version.
+
+| observed
+| A person watched it on the named platform and the observation is attached.
+| Nothing. This is the top rung, and it is the only one that ticks a matrix row.
+|===
+
+Where the project's own requirements sit today:
+
+[cols="2,1,3",options="header"]
+|===
+| Requirement | Rung | What is missing
+
+| The assessment and the decisions
+| linted
+| Gates read the documents (adoc macros, links, catalogue, canon lockstep).
+ That is the right rung for prose; there is no better one.
+
+| README states the product
+| linted
+| Same. Its *claims* about platforms are still `unverified` in the matrix, which is
+ the honest state and must stay that way until §2 runs.
+
+| The 20 repository topics
+| asserted
+| Chosen, not applied: `gh repo edit --add-topic` is outward-facing and is yours.
+
+| Publishing profile and checky-monkey work order
+| asserted
+| Nothing in this repository can verify a document about another repository.
+
+| AC-1 to AC-11
+| asserted
+| Nobody has executed one of them. They are written as criteria precisely so they
+ can be failed; none has been run.
+
+| No network egress (AC-9)
+| asserted
+| There is no check. See §4: this is the cheapest one to make real.
+
+| "Bun-first" for any JavaScript
+| executed
+| Four hand-written scripts exist and run under Bun; a gate refuses to run without
+ it (`scripts/ijson-jcs-cli.js`). No manifest, no lockfile, no npm dependency.
+ Proven on the machines that have Bun, which this one does not.
+|===
+
+The shape of the gap: everything the *repository* can prove about itself is
+proven; everything that requires a browser, an OS window manager or an audience
+is only asserted. That is not a defect in the documents — it is the boundary of
+what a repository can do. Reaching the next rung needs a procedure and a person,
+which is what §2 supplies.
+
+== 2. The acceptance procedure (the missing middle)
+
+A matrix row may only move off `unverified` when an observation is attached. The
+procedure is deliberately boring, so that it can be repeated and so that a
+disagreement is about the observation, not about the method.
+
+=== 2.1 One run sheet per platform
+
+Each run produces: platform and version strings, the browser and manager
+versions, the fixture used, the recording, and a line per AC with *pass*,
+*fail* or *blocked* plus one sentence of what was seen. `blocked` is a legal
+answer and is recorded as such — AC-10 says a missing primitive must produce a
+specific message, so a block with a message is itself evidence.
+
+=== 2.2 A fixture, not a website
+
+The observation has to happen on a page whose content is known, or the next run
+cannot be compared with this one. The fixture is a single local page containing,
+on purpose:
+
+* a text input inside the float's default resting region (AC-2, AC-3);
+* a button under the float (AC-4: tapping the chip must not press it);
+* a long list that scrolls under the float (the moving-target case);
+* an element pinned to the viewport edge (AC-6: the handle stays reachable);
+* a 60 Hz-visible animation (AC-9: the float must not cost frames);
+* a `<video>` for both PiP paths, and a `documentPictureInPicture` probe that
+  reports whether the API exists (so the same page serves both vehicles).
+
+Building this fixture is in reach now; running it is not. It is the single most
+valuable artifact the project can produce next, because it converts every AC
+from a sentence into a repeatable observation.
+
+=== 2.3 Negative controls
+
+Every run sheet carries at least one deliberately failing control — for example
+an injected rule that lets the float cover the focused input — to show the
+procedure can detect a defect. A run sheet that has never produced a *fail* is
+untested evidence.
+
+=== 2.4 Evidence format
+
+`docs/acceptance/<platform>/` holds the run sheet and the recording, named by
+date. Nothing else: no prose summaries that drift from the recording. The
+platform matrix links to the directory, so a ticked row is one hop from its
+proof.
+
+== 3. Three invariants the interaction model does not state
+
+The interaction model describes states and triggers. It does not state what must
+*never* happen, and invariants are what a test can be written against. These are
+offered as additions, not corrections.
+
+=== 3.1 Non-overlap of the interactive target set
+
+The model's obstruction rule is about the focused element. The invariant should
+name the set: *no element that can receive a pointer event, and no element
+carrying text the user is reading, may be under the float's opaque area after
+the dodge settles.* The distinction matters because the two sets have different
+fixes: a focused element is dodged by moving the float, a reading target is
+dodged by moving the *page* (scroll offset), and the second is possible where
+moving the window is not.
+
+=== 3.2 Anti-oscillation
+
+A dodge-out followed by a dodge-back followed by a dodge-out is the classic
+failure of this class of feature, and it is not covered by any trigger rule
+because every individual transition is legal.
+
+Proposed rule: a departure requires the overlap to persist for two consecutive
+frames *and* a predicted overlap longer than the travel time; a return requires
+the obstacle to be absent for a dwell period (default 400 ms, configurable). No
+state change may occur more than twice in 500 ms; a third attempt latches the
+current state until the pointer or caret moves again. That last clause is the
+part that makes it testable: a runaway oscillation becomes a *stuck* state, and
+a stuck state is a fail a run sheet can see.
+
+=== 3.3 Reservation horizon for moving targets
+
+The moving-target case is usually written as "re-dodge if it overlaps again",
+which is a loop that can never terminate on a page that scrolls continuously.
+Better: treat the float's resting region as a *reservation* held for a horizon
+(long enough for the next travel plus settle), and treat an incoming target as a
+request against it. A request that arrives before the horizon expires does not
+trigger a new dodge; it is answered by the reservation already in flight. This
+turns "how often do we dodge?" from an emergent property into a parameter, which
+is exactly what a budget (AC-9) needs.
+
+== 4. Egress: the cheapest real check available
+
+AC-9 says no network egress. checky-monkey's submission profile asks for
+`egress = "none"`. Neither is currently verified. Two cheap proofs, in order:
+
+. *Static.* A gate over the built artifact that fails on `fetch`, `XMLHttpRequest`,
+ `WebSocket`, `sendBeacon`, `EventSource`, `navigator.sendBeacon`, and on any
+ `@connect`, `@resource` or `@require` line in the header. Cheap, CI-able, and it
+ cannot be argued with.
+. *Runtime.* A run-sheet step that opens DevTools with the network panel
+ recording, exercises every state from §2 of the interaction model, and attaches
+ the export. Slow, human, and the only one that catches an egress introduced by a
+ dependency.
+
+The gate is worth writing before the product exists, because it can be written
+against the *profile* (the header and the manifest), not the code.
+
+== 5. Threads that can run in parallel
+
+Each thread has an owner, a first artifact and a reason it is outside the other
+party's reach. "You" is the repository owner; "agent" is anyone in front of this
+document with a shell.
+
+[cols="2,1,2,3",options="header"]
+|===
+| Thread | Owner | First artifact | Why it cannot be the other party
+
+| T1. Acceptance run sheets (§2)
+| you (hardware) + agent (fixture)
+| the fixture page and one run sheet skeleton
+| Needs a real Edgium/Firefox/Chrome on a real display. No browser here; no
+ display at all.
+
+| T2. Static egress gate (§4)
+| agent
+| `scripts/check-egress.sh` plus a self-test with a planted violation
+| Needs only the profile text, which is already written.
+
+| T3. Template defects, upstream
+| agent files, you triage
+| two issues against `rsr-template-repo`
+| Found by minting this repository, and they affect every child of the template:
+ (i) `.hypatia-ignore` ships `structural_drift/SD022:build/docs-seed/` but the mint
+ deletes `build/docs-seed/`, so every minted repo fails
+ `check-hypatia-ignore.sh` rule 3; (ii) the "Use-this-template mint end to end"
+ lane in `estate-rules.yml` runs a full mint on a tree that has already been
+ minted, and its expectations about `build/templates/` no longer hold.
+ Filing needs the maintainer account; triage is a judgement call.
+
+| T4. checky-monkey work order (§4 of the publishing proposal)
+| agent drafts, you send
+| the eight-item work order, already written
+| Its Phase 1 is unbuilt and its roadmap promises ReScript rewrites that the
+ estate denies. It is someone else's roadmap; only its owner can change it.
+
+| T5. gossamer click-through
+| agent investigates, you decide
+| an issue or PR against `metadatastician/gossamer`
+| `alwaysOnTop` exists; click-through and per-window alpha do not. That is a
+ Zig/Idris2 change in someone else's codebase.
+
+| T6. Topics, clade registration and the first Greasy Fork upload
+| you, only you
+| repo metadata, `gv-clade-index` entry, the script page
+| All three are outward-facing and permanent-ish. The deed's own comment says
+ registration is the owner's act; the same reasoning covers topics and publishing.
+|===
+
+Order that respects dependencies: T2 and T1's fixture can start immediately and
+in parallel; T1's *runs* need the fixture; T4 and T3 are drafts that need only
+words; T5 needs the userscript target to exist before it is worth asking for
+click-through; T6 is yours whenever you want it and blocks nothing.
+
+== 6. Decisions only you can make
+
+. *Platform reach.* The matrix says Firefox shares the first row with Edge and
+ Chrome, but the two engines do not share the *mechanism*: Chromium has had
+ Document Picture-in-Picture since 116, Firefox since 151, and Firefox has no
+ `requestPictureInPicture()` for the classic path. If the first row means "the
+ in-page float works", the engines are equal. If it means "a real floating
+ window", Firefox is a different row with a different floor. Which reading is
+ intended changes AC-1's definition of "a working state".
+. *The 20 topics.* Chosen, not applied.
+. *The acceptance fixture's home.* Whether the fixture lives in this repository
+ (a test asset) or in a separate one (so the userscript can be exercised against
+ a stable URL) is a publishing decision, not a coding one.
+. *Whether "certainly meets the requirements" is allowed to mean rung `executed`.*
+ The repository can reach that alone. Rung `observed` cannot be reached without
+ you, and it is the only rung a matrix row accepts.
+
+== 7. What this document is not
+
+It is not a schedule, it is not a claim that any of §3 is correct, and it is not
+a substitute for running §2. If only one thing from it survives review, it should
+be the fixture: every other item is cheaper once an observation can be made.

@@ -104,6 +104,11 @@ Blank is honest; guessed is not.
 | No third-party floating window exists; only our own video can enter PiP
 |===
 
+A row moves off `unverified` only when an observation is attached. The run sheet,
+the fixture it is observed against and the evidence format are specified in
+link:../proposals/NEXT-WORK.adoc[NEXT-WORK]: that document also records which
+requirements are currently proven and which are only asserted.
+
 == 3. Degradation ladder
 
 The feature degrades; it does not vanish. Each rung must be reachable from the

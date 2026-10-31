@@ -1,0 +1,150 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= Upstream defects found by minting this repository
+:toc:
+
+:status: READY TO FILE — the issue bodies below are paste-ready; filing is the
+ owner's act (it is outward-facing and appears in someone else's tracker).
+
+== Why these exist
+
+`just repo-init` was run on this repository on 2026-10-31. Minting is the only
+operation that exercises the template's cleanup path, and two defects surfaced
+that no lane can catch inside the template itself, because the template's own
+tree still has the files its cleanup is supposed to remove.
+
+Both are reproducible from a freshly minted child in under a minute, with no
+network access and no toolchain beyond bash and git.
+
+== D1. The mint leaves a stale `.hypatia-ignore` exemption, so every child fails a gate
+
+=== Evidence
+
+In a minted child (any child; this repository is one):
+
+[source,console]
+----
+$ grep -n 'docs-seed' .hypatia-ignore
+structural_drift/SD022:build/docs-seed/
+
+$ test -d build/docs-seed || echo 'build/docs-seed does not exist'
+build/docs-seed does not exist
+
+$ bash scripts/check-hypatia-ignore.sh .
+FAIL: line 26: path 'build/docs-seed/' does not exist in this repository (a stale
+exemption keeps suppressing a path that was renamed, and no longer describes what
+it says)
+check-hypatia-ignore: 1 rule violation(s) in .hypatia-ignore
+----
+
+=== Cause
+
+`build/just/repo-init.just` deletes `archetypes/`, `build/docs-seed/` and
+`build/templates/` and records them in the child's `(variant)` clause under
+`(paths :removed …)`. `.hypatia-ignore` is not touched, and the entry it carries
+is a whole-tree exemption whose stated reason was that the *template's* own
+`build/docs-seed/` copy describes hypothetical downstream trees. Once the
+directory is gone the reason no longer applies and the file is stale by the
+meta-rule that `check-hypatia-ignore.sh` rule 3 enforces.
+
+=== Effect
+
+Every minted child starts with one failing gate, in the `proven-tests-and-benches`
+suite ("Hypatia exemption meta-rules"), on the first commit, for a reason that
+has nothing to do with the child's content. It reads as a defect in the child.
+
+=== Suggested fix
+
+In `build/just/repo-init.just`, next to the existing deletions, drop the entry
+(and its comment block) from `.hypatia-ignore` when
+`structural_drift/SD022:build/docs-seed/` is removed, and leave a one-line note
+in its place explaining that a downstream repository which keeps a docs seed
+should re-add it. Alternatively, make the entry conditional on the directory
+existing — but `.hypatia-ignore` has no conditional syntax, so the mint is the
+only place that can do it.
+
+=== What this repository did instead
+
+Removed the entry at mint and recorded why (commit `4c9628a`, `.hypatia-ignore`).
+That fixes this child and does nothing for the next one.
+
+== D2. The "Use-this-template mint end to end" lane fails in a minted repository
+
+=== Evidence
+
+`estate-rules.yml`, final step, on this branch:
+
+[source,console]
+----
+$ gh api /repos/hyperpolymath/hfsgtfoomw/actions/runs/<id>/jobs \
+    --jq '.jobs[].steps[] | select(.conclusion=="failure") | .name'
+Use-this-template mint end to end
+----
+
+The same workflow passes on `main` (commit `436a9f2`, run of 2026-10-31T11:17Z,
+`success`), so this is a difference introduced by instantiating the template,
+not by the documentation changes in the branch.
+
+=== What has been eliminated
+
+* The pin resolution is not the cause: reconstructing the test's own steps by
+ hand — clone the tree under test, commit it as "template under test", create a
+ "Use this template" child from that commit — and running
+ `scripts/resolve-template-pin.sh --slug … --url …` returns
+ `branch=main commit=<the template commit> tree=<the tree> source=root-commit`,
+ exit 0. The comparison the test makes in step (a) is therefore satisfiable.
+* The tooling is not the cause: the test's five up-front tools (`just`, `rustc`,
+ `uuidgen`, `nickel`, `file`) are all installed in that job, before the step runs.
+* The manifest is not the cause: every entry in `.machine_readable/mint-verbatim.txt`
+ still exists, and the negative controls that append a stale entry are unchanged.
+
+=== Not yet established
+
+Which assertion fails, and whether the mint completes. The failure cannot be
+reproduced outside CI from here: the sandbox has no `rustc` (the mint's tools are
+Rust, built on demand) and no `nickel` (the arrival pack and K9 lane). The
+check-run API exposes only "Process completed with exit code 1", and the job log
+endpoint redirects to a host this environment cannot reach.
+
+=== Two hypotheses worth testing first, in CI
+
+. *Already-minted inputs.* The test's fixture list runs
+ `tests/workflows/mint_cleanup_test.sh` and
+ `tests/workflows/template_conformance_test.sh` *inside the child*. Both were
+ written against a child minted from the full template. A child minted from an
+ already-minted parent carries `(paths :removed …)` that names nothing — the
+ parent had already removed those directories — so any assertion in those
+ fixtures that reads the removal record will see an empty list.
+. *Protected-file assumption.* Step (b) asserts that every
+ `.machine_readable/mint-verbatim.txt` entry is byte-identical after the mint. If
+ the mint now rewrites a listed file for a reason unrelated to the template name
+ (a date, a canon pin, a provenance line), the assertion fails without the mint
+ being wrong.
+
+=== Suggested fix
+
+Whatever the cause, the durable fix is the same shape as
+`scripts/check-template-conformance.sh`: that script self-skips in the template
+(`archetypes/` present) and is real in children. This lane is the mirror — real in
+the template, meaningless in a child — and should say so out loud (a notice, not a
+silent pass) rather than fail. A skipped lane that says "this tree is not the
+template" is honest; a red lane that says "the child is broken" is not.
+
+== How to file
+
+[source,console]
+----
+# D1
+gh issue create -R hyperpolymath/rsr-template-repo \
+  --title "mint leaves a stale .hypatia-ignore entry: every child fails check-hypatia-ignore" \
+  --body-file <(sed -n '/^== D1/,/^== D2/p' docs/reports/UPSTREAM-TEMPLATE-DEFECTS.adoc)
+
+# D2
+gh issue create -R hyperpolymath/rsr-template-repo \
+  --title "estate-rules: the Use-this-template mint lane cannot pass in an already-minted repo" \
+  --body-file <(sed -n '/^== D2/,/^== How to file/p' docs/reports/UPSTREAM-TEMPLATE-DEFECTS.adoc)
+----
+
+Neither command has been run. Filing is outward-facing, and the deed's own
+identity block says the same thing about registration: an unchosen, outward act
+is the owner's, not an agent's.
