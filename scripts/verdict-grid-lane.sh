@@ -63,9 +63,9 @@ ORANGE_BADGE='{"schemaVersion":1,"label":"Hypatia grid","message":"indeterminate
 # wrongly resolved ref would otherwise run unreviewed code in a job that holds
 # pull-requests: write.
 STANDARDS_REPO="${VERDICT_GRID_STANDARDS_REPO:-metadatastician/standards}"
-STANDARDS_SHA="${VERDICT_GRID_STANDARDS_SHA:-8e48b1caade08a552646adeab66558ac43b4360d}"
-RENDERER_SHA256="3ee93552920dfc7c472e763a040cbaed8f38ed4b8af151f5d5076d3124211388"
-JQ_LIB_SHA256="5681fcefe09480d82b7fa13a6fcb0c389f16467fe7abbace66986cca83114544"
+STANDARDS_SHA="${VERDICT_GRID_STANDARDS_SHA:-f0b3cd4c464d33e1584f8528c17bce104555e256}"
+RENDERER_SHA256="7c2cac9248fd249f607de827dc8dc9a3f6276bf9ca662be86aa435e9aeca48d7"
+JQ_LIB_SHA256="36e7aa69afbe8c488b1a313fd9bd0cf2bf6af45d3f34b80afd793f6b20582896"
 
 usage() {
     sed -n '5,60p' "$0" | sed 's/^# \{0,1\}//' >&2
@@ -307,7 +307,7 @@ fallback_report() {
 }
 
 cmd_render() {
-    local out="" renderer_dir="" hyp="" pan="" pon="" backs="" enrol="" prev=""
+    local out="" renderer_dir="" hyp="" hsarif="" pan="" pon="" backs="" enrol="" prev=""
     local url="" pr="local" href="" pref="" qref="" changed="" lane="hypatia"
     local renderer_sha="$RENDERER_SHA256" lib_sha="$JQ_LIB_SHA256"
     local excludes=()
@@ -319,6 +319,7 @@ cmd_render() {
             --renderer-sha256) renderer_sha="$2"; shift 2 ;;
             --lib-sha256) lib_sha="$2"; shift 2 ;;
             --hypatia) hyp="$2"; shift 2 ;;
+            --hypatia-sarif) hsarif="$2"; shift 2 ;;
             --panic) pan="$2"; shift 2 ;;
             --pons) pon="$2"; shift 2 ;;
             --report-backs) backs="$2"; shift 2 ;;
@@ -360,6 +361,10 @@ cmd_render() {
     )
     [[ -z "$url" ]] || args+=(--url "$url")
     [[ -z "$hyp" || ! -e "$hyp" ]] || args+=(--hypatia "$hyp")
+    # The renderer grades the Hypatia row from SARIF; without it the row is
+    # indeterminate ("no SARIF projection"). A missing file is omitted, never
+    # faked, so absence still renders orange with that reason.
+    [[ -z "$hsarif" || ! -e "$hsarif" ]] || args+=(--hypatia-sarif "$hsarif")
     [[ -z "$pan" || ! -e "$pan" ]] || args+=(--panic "$pan")
     [[ -z "$pon" || ! -e "$pon" ]] || args+=(--pons "$pon")
     [[ -z "$backs" || ! -d "$backs" ]] || args+=(--report-backs "$backs")

@@ -8,7 +8,261 @@ https://semver.org/spec/v2.0.0.html[Semantic Versioning].
 
 === [Unreleased]
 
+==== Added
+
+* **Chain minting: a minted repo can be minted again.** "Use this template"
+  on a minted repo now mints correctly (owner ruling 2026-11-04, after the
+  Codex review of #251 showed the grandchild inherited its parent's identity).
+  `scripts/chain-mint.sh` replays the parent's mint, mints the same template
+  commit with the new answers, and carries the parent's own work across with
+  `git merge-tree`: everything rendered is rendered afresh, the parent's
+  edits, additions and removals are kept (renamed by the self-name rule and
+  the narrow self-owner rule, each defined once in repo-init) and declared in
+  the new `(variant (paths))` by comparing the result with the fresh mint, as
+  the drift gate does, so an edit carried across an answer-dependent rename
+  (a Julia entry point) is declared where it lives. Paths stay NUL-delimited,
+  so a backslash or a leading dash survives, and a file the parent tracks
+  although an ignore rule matches it is carried. Identity files are held in
+  git's index, never through the work tree, and a symlink at any path the
+  chain writes is refused, so a parent-controlled link cannot redirect a
+  write. Every tree is read from, and the result written back into, the
+  checkout by git (a scratch index and a two-tree `read-tree -m -u`), never by
+  tar, so no symlink is followed. The checkout is read and written by its own
+  git, under its own configuration (a linked worktree's common excludes,
+  `core.autocrlf`, a global excludesFile, clean and smudge filters); the
+  replays under none. Every path the result adds is checked on the disk first
+  and refused by name if anything the parent snapshot does not track is there,
+  ignored or not: git's own check lets an ignored entry be overwritten
+  wherever it sees the ignore rule. A sparse checkout, an unresolved merge, or
+  a tracked path beneath a symlink is refused. A parent's deletion is honoured
+  across an answer-dependent rename; a type change there is refused by name.
+  The baselines, and the drift gate, replay with the wrapper at the pin, not
+  the carried copy, and
+  the template clone takes no init templates. The result is fixed before the
+  gates run (what they write is not carried), every file the write changes is
+  first checked out into scratch with this checkout's filters, and a write
+  that still fails part-way keeps the objects needed to put it back. The
+  generator's temporary paths join the symlink guard. A path holding byte 0x01 is refused
+  like one holding a newline. The deed's (mint-answers) decides that a tree is
+  a minted repo, so one that added build/templates/identity.deed.in back is
+  still chain-minted. The carried generators run before the
+  final measure (their intermediate data is removed before it, and the
+  declaration settles path by path and category by category), and the result must pass
+  the child's own gates (placeholders, SPDX, toolchain, container pins, www,
+  `just verify`) before it is written. A conflict with the new rendering stops
+  before anything is written. Provenance records the root
+  template commit plus `:derived-from` the parent. A parent minted before
+  `(mint-answers)` is still refused. `scripts/replay-mint.sh` is now the one
+  replay path, shared with the drift gate; only a recorded `(mint-answers)`
+  supplies its package uuid, so the new side of a chain mint derives its own.
+* **An exact drift gate for minted repos: the mint is replayed.** repo-init
+  records its answers in a `(mint-answers)` deed clause (owner ruling
+  2026-11-04: only values it already writes into the child's files; the
+  recipe checks each value against those files, not the template-only trees
+  it deletes, and names any it leaves out)
+  and takes its date from `RSR_MINT_DATE`; a replay also takes the recorded
+  Julia package uuid, which an ordinary mint always derives.
+  `scripts/check-mint-drift.sh` re-mints the template at `(provenance :template-commit)` with those answers
+  and diffs the child against the result, so a fresh mint is green by
+  construction and each later edit is named. `check-variant-drift.sh`
+  delegates to it for a minted repo, and stage 8 recommends it again. The
+  derived files (`CLAUDE.md`, the repository map) are declared diverged at
+  mint: their own gates keep them fresh. Each side's file set is its tracked
+  or unignored files (the child's under its own git configuration, as
+  `git add -A` commits it; the replay's under none), so a force-added build
+  artefact is still named. The
+  most specific declaration covering a path decides its category, so a file
+  declared added under a directory the mint removes is an addition; a path
+  holding a newline is refused by name. A path declared diverged must be one
+  the mint produces; `operational-state` stays out of the comparison. The
+  replay's git runs without user or system configuration or hooks. What a
+  work tree already held beyond the pinned tree before the mint (an edit, an
+  untracked file, a deletion) is named by the mint, which then replays itself
+  from the pinned tree before writing anything and declares in
+  `(variant (paths))` exactly what the result differs by: the comparison the
+  drift gate makes, whatever the mint did to a change on the way (moved,
+  rendered, overwritten, or reached through an edited input). The replay
+  passes the recorded `RSR_TEMPLATE_SLUG`. A pre-mint change under a root `.well-known/` (which the mint moves),
+  or a work tree that differs from an asserted template tree this repository
+  does not hold, is refused before anything is written. The gate clears
+  inherited git location variables, and writes the pinned tree as a checkout
+  does (`checkout-index`, never `git archive`, whose `export-ignore` and
+  `export-subst` would change it), without global git attributes. A pre-mint
+  file at a path the mint itself writes (the archetype overlay, the docs seed,
+  the deed), or an edited template file the overlay replaces, is refused,
+  since the mint would overwrite it; and the mint also dry-runs itself on the
+  work tree, refusing by name any pre-mint change it would discard (an edit to
+  the roadmap or `mise.toml`, which it writes whole). repo-init clears any
+  inherited git location (`GIT_DIR`, `GIT_INDEX_FILE`, …) before it runs, so
+  neither its replays nor the tests it runs in scratch repositories can commit
+  into the child; one naming another repository is refused. The replays
+  receive `STANDARDS_UUID_V8_JS`, and a template tree carrying a submodule
+  (a gitlink, which a replay cannot reproduce) is refused by name, at the mint
+  as well, clean or not. A pre-mint change gone from both results (an input
+  the mint never copies, a file in a directory it deletes) is checked by
+  minting without it, and refused by name when it has no effect; a path
+  holding byte 0x01 (the deed reader's record separator) is refused like one
+  holding a newline.
+
+==== Changed
+
+* **Agda proofs use PROOF-POLICY §2.1's invocation.** `scripts/check-proofs.sh
+  agda` runs `agda --safe --without-K --cubical-compatible`, the canonical
+  theory invocation (metadatastician/standards `3-practice/PROOF-POLICY.adoc`
+  §2.1), instead of `agda --safe`. Every repository minted from the template
+  inherits the gate, so this is the source of the fix that
+  hyperpolymath/resource-algebra#19 and hyperpolymath/occupancy-types#18 make
+  to their copies. `Properties.agda` checks under the new flags (Agda 2.6.3,
+  standard library 1.7.3); the manifest records it.
+
+
 ==== Fixed
+
+* **Mint, drift gate and chain mint: the review findings left open on #275
+  and #277.**
+** An answer holding byte 0x01, the deed reader's record separator, is
+   refused before the first write.
+** The drift gate and the pre-mint check compare a symlink's target byte for
+   byte (a trailing newline was stripped) and the execute bit git records
+   (the owner's), not `-x`, which as root is true for a file only its group
+   or others may execute.
+** The repo uuid is derived the same on every machine
+   (`scripts/uuid5-url.sh`: sha1sum, shasum or openssl, equal to
+   `uuidgen --sha1`); without uuidgen it used to be `UNASSIGNED`, which a
+   replay then reported as drift. `deed-field.sh --uuid` falls back to it.
+** A divergent legacy `.well-known/` file is quarantined under the mint
+   date (`migrate-wellknown-to-www.sh --date`), so a later replay names it
+   the same.
+** Replays keep a file the template tracks although its `.gitignore`
+   matches it, and refuse a template commit whose checkout does not read
+   back as its own tree, instead of replaying it inexactly.
+** A chain mint holds the parent's original deed name as identity (a parent
+   that renamed its deed chain-mints), refuses a carried generator that
+   edits the deed, and fetches a partial clone's pinned files while the
+   user's git configuration (credentials, `insteadOf`) still applies.
+** A minted repo without `scripts/chain-mint.sh` is refused, never minted as
+   a template.
+
+* **repo-init follow-ups to #251 (the Codex review it merged before).**
+** Re-minting a minted repo silently inherited its parent's author, contacts
+   and identity (its tokens are filled and `build/templates` is gone). A
+   minted repo that records `(mint-answers)` is now chain-minted (see Added);
+   one that does not is refused before writing, naming its template.
+** The template identity no longer falls back to the git remote, which in a
+   template-created child is the child itself. A Justfile without readable
+   `OWNER :=`/`REPO :=` (now also `export`) needs `RSR_TEMPLATE_SLUG`.
+** The self-name pass matches the template name only where no letter or
+   digit touches it, so a short parent name such as `app` no longer rewrites
+   "application" into "newlication".
+** `resolve-template-pin.sh` pins a root commit by creation time (the
+   default branch's tip when the child was made) and refuses, listing them,
+   when several commits share a tree; 29 trees repeat on main.
+** `rust-tool.sh` caches each mint tool by the hash of its source, so two
+   checkouts can no longer run each other's binary.
+** Answers go through `sed_rhs`, so `&`, `|` and `\` in a description or name
+   render literally; an answer with a newline is refused.
+
+* **`.kyaml` files were invisible to four file scans.** Estate configuration
+  is `.kyaml` (D307), but these selectors matched only `*.yaml`/`*.yml`: the
+  invisible-character scan (`scripts/check-invisible-characters.sh`), the
+  `http://` URL check in `security-policy.yml`, and the VeriSimDB probe in
+  `dogfood-gate.yml` and `dogfood-summary.yml`. A zero-width character or a
+  plain-HTTP URL in a `.kyaml` file passed unseen. Each now includes
+  `*.kyaml`. Ported from `hyperpolymath/panic-attack#246`.
+* **The template's gates could not fail, and the toolchain was not minted.**
+  Reported from JuliaPackageSpitter.jl and traced here; see
+  `docs/reports/compliance/RSR-TEMPLATE-DAMAGE-2026-10-30.adoc` for the full
+  investigation and the estate inventory.
+** `spdx-headers` globbed `*.rs`/`*.res`/`*.gleam` and capped the scan at 20
+   files, so it examined nothing and passed in every Julia, Idris2, Zig, Elixir,
+   OCaml and shell repository. `scripts/check-spdx-headers.sh` derives the
+   extension set from the languages the repository declares, scans every match,
+   and fails when a declared language has no files or when it matched nothing;
+** `container-images-pinned` asked whether `cgr.dev` appeared in the
+   Containerfile, which `FROM cgr.dev/chainguard/wolfi-base:latest` satisfies.
+   `scripts/check-container-pins.sh` requires a 64-hex digest on every `FROM`;
+   `scripts/pin-container-digests.sh` writes the pins and refuses a placeholder;
+** `mise.toml` was copied from the spine, not rendered, so every mint declared
+   the template's own toolchain — nine runtimes including Python, which is
+   banned estate-wide, and not the language of the repository. It is now
+   rendered from the detected languages by `scripts/render-mise.sh`, and
+   `scripts/check-mise-language.sh` fails a repository whose declared toolchain
+   is not the one its languages need;
+** `just quality` printed "All quality checks passed!" over verbs that reported
+   `N/A` and exited 0. It now fails when a verb runs nothing, and the
+   `julia-library` archetype wires `fmt`, `fmt-check` and `lint` to
+   `scripts/julia-quality.jl`;
+** `build/container/Containerfile` is deleted rather than pinned: two
+   `FROM …:latest` lines and a body of TODO comments built nothing and failed
+   `container-images-pinned` in every minted repository, including those that
+   publish no image. A repository that publishes one adds the file and pins it
+   (`scripts/pin-container-digests.sh`); `just container-build` says so;
+** `archetypes/*/prune.txt` and `scripts/prune-archetype-modules.sh`: an
+   archetype can remove spine modules its preset does not declare, so a Julia
+   library no longer inherits a `Containerfile`;
+** the mint's `.in` rename covered a hardcoded three-file list; it now covers
+   the files the applied overlay actually added, so the spine's own `.in`
+   templates survive;
+** `check-no-placeholders.sh` died with exit 1 and no output in a repository
+   with no `origin` remote (a fresh mint, before the first push): `git config`
+   exited 1 and `set -e` took the script with it;
+** `validate-template.sh` referenced an unset `SCRIPT_DIR` (aborting at Phase 6
+   under `set -u`) and demanded `CONTRIBUTING.md` in an estate that writes
+   `.adoc`. There is now a root `LICENSE` (MPL-2.0), so the Mustfile's
+   `license-present` and every minted `link:LICENSE[LICENSE]` resolve;
+** a pre-write token gate in `repo-init` refuses a mint the recipe cannot answer
+   for, and four gates now run against the minted tree before handoff;
+** `tests/workflows/mint_gates_test.sh` (30 controls) asserts that every gate
+   fails on a fixture built to fail it; `tests/e2e/language_profiles_mint_test.sh`
+   (27 controls) mints a Julia package and a Rust CLI and runs the gates on both.
+   `.github/workflows/quality.yml` gained a `mint-gates` job that runs them.
+
+* Defects a child inherited, found porting this CI into resource-algebra
+  (resource-algebra#15, fixed there in resource-algebra#16):
+** Secret Scanner: a repository `.gitleaks.toml` replaced the estate
+   gitleaks baseline in all three passes, so a pull request could pass with
+   a weaker local config. The baseline now always runs; a local config adds
+   a second pass;
+** `scripts/check-required-contexts.sh` checked a mapped context's workflow
+   trigger but not that a job with that check-run name exists, so a renamed
+   job could strand pull requests behind an unproducible required check; a
+   job with neither `runs-on` nor `uses` produces nothing. A
+   job that calls a local reusable workflow (one declaring
+   `on: workflow_call`, directly in `.github/workflows/`, called as `./` or
+   `$/`, nested at most ten deep, no
+   cycles) counts as producing
+   `<caller> / <called job>`; one that calls a remote reusable produces
+   nothing the gate can certify. A literal matrix is expanded as GitHub
+   names its runs (property names case-insensitive, and only names GitHub
+   can dereference); a matrix with
+   include/exclude or computed values is
+   refused by name, never assumed to match; a matrix caller of a reusable
+   produces one `<caller run> / <called job>` per run;
+** `repo-init` and `container-init` filled the container tokens without
+   reformatting the KYAML, so a fresh child that keeps its containers failed
+   Estate Rules' "Converted YAML stays KYAML". Both now run
+   `scripts/format-container-kyaml.sh` after their substitution pass, and check
+   for a yq that writes KYAML before they write anything (a mint that prunes
+   `build/container/` needs none), refusing a service name, port or registry
+   that would break the KYAML they fill or the substitution (a service name
+   that is a DNS label, since it is also a TOML table key and the backend's
+   hostname; a registry of a host or a bracketed IPv6 address in RFC 4291 text, an optional port
+   from 1 to 65535 and lower-case path components, the owner lower-cased in
+   its default;
+   `container_kyaml_test.sh` holds the accepted and refused values). yq joins
+   the base toolchain (`MISE_BASE`, so every rendered `mise.toml`, and the
+   template's own); `mise.lock` gains its record with `just toolchain-refresh`.
+   The quick-start docs install the toolchain before `just repo-init` and run
+   every `just` through `mise exec --` unless mise is activated. Estate Rules
+   installs its pinned yq before the mint steps, and `use_template_mint_test.sh`
+   checks the minted configs and that a mint without a KYAML-capable yq stops
+   untouched;
+** `mint-verbatim.txt` did not list `tests/ffi_strings_test.sh` or
+   `tests/workflows/container_kyaml_test.sh`, token fixtures the placeholder
+   gate then rejected in a child;
+** `tests/ffi_strings_test.sh` named the template's export prefix, so in a
+   child it called functions that do not exist. It now maps the child's exported
+   symbols onto the fixture's, and nothing else that shares their prefix.
 
 * `repo-init` minting a repository created with GitHub's "Use this
   template" (measured on metadatastician/lintel, 2026-10-14):
@@ -18,9 +272,10 @@ https://semver.org/spec/v2.0.0.html[Semantic Versioning].
    unresolvable tree aborts the mint (`RSR_TEMPLATE_URL`,
    `RSR_TEMPLATE_COMMIT`, `RSR_ALLOW_UNPINNED=1` for the exceptions);
 ** the template's name, owner and deed file are derived from the checkout
-   (Justfile, then remote), not hardcoded, so a mint from a minted repo works
-   (ported from lintel#9, which did not merge; its removal of the
-   `[YOUR-REPO-NAME]` deed seds was not ported, since only they fill it);
+   (the root Justfile, else `RSR_TEMPLATE_SLUG`; never the git remote, which in
+   a "Use this template" child names the child), not hardcoded (ported from
+   lintel#9, which did not merge; its removal of the `[YOUR-REPO-NAME]` deed
+   seds was not ported, since only they fill it);
 ** every rewrite pass and completeness check reads one file list: the
    repository's own files (`git ls-files`, plus untracked not-ignored), minus
    `.machine_readable/mint-verbatim.txt`. The strip pass no longer edits
@@ -31,7 +286,9 @@ https://semver.org/spec/v2.0.0.html[Semantic Versioning].
    fixture token; it is now carried verbatim;
 ** the repository map is generated from the work tree (`gen-repo-map.sh
    --worktree`), after the last tree-changing step, so it no longer lists
-   `archetypes/` and the template's deed name;
+   `archetypes/` and the template's deed name; a path holding a newline,
+   which the line-based map would split into bogus entries, is refused by
+   name in both modes;
 ** stage 8 no longer tells a minted repo to arm `check-variant-drift.sh`,
    which a fresh mint cannot pass (101 rendered files differ); it points at
    `check-template-conformance.sh`. The (variant) clause now declares the
@@ -95,6 +352,47 @@ https://semver.org/spec/v2.0.0.html[Semantic Versioning].
   it, and no such row existed. The grid now renders that row from
   `static-analysis-gate.yml` evidence, and the enrolment reason states the rule
   it is an instance of (one scanner, one row).
+
+* **Seven defects the review of this work found, each now covered by a control.**
+  None of these were reached by the tests as written, which is the point:
+** `check-container-pins.sh` took the "nothing to pin" success path even after
+   failing on a `Dockerfile`, so the one repository shape the Dockerfile rule
+   exists to catch reported PASS; and it registered a stage name only after the
+   line that `continue`s, so the ordinary `FROM image@sha256:… AS build` +
+   `FROM build` pair was judged an unpinned remote image. Stage names are now
+   registered when parsed, before any branch can skip the rest of the line;
+** `pin-container-digests.sh` rewrote every `FROM` line, turning `FROM scratch`
+   and `FROM build` into `scratch@sha256:…` and `build@sha256:…` — corrupting the
+   multi-stage files it should leave alone, while the companion gate accepted the
+   result. It now splits FROM into flags/reference/tail and rewrites only the
+   reference of a remote image;
+** `check-spdx-headers.sh` judged emptiness per EXTENSION, so a valid Elixir tree
+   with `.ex` and no `.exs` (or OCaml `.ml` without `.mli`) failed for a language
+   it is written in. Emptiness is now judged per language, across all of its
+   extensions;
+** `render-mise.sh --langs` only changed the label: the tool list still came from
+   the tree's own detection, so a fixture asking for Julia was handed the docs
+   toolchain. `mise-tools` now accepts the language list, and `--check` compares
+   the declared toolchain rather than the rendered prose — which made it
+   impossible to pass on any repository that wrote its own header, the template
+   included;
+** `check-mise-language.sh` parsed only bare `[tools]` keys, and backend-qualified
+   tools MUST be quoted (`"npm:prettier"`), so the banned-tool check could never
+   see them; its `--detect` mirror also looked only at the root, calling a tree
+   with `src/interface/abi.ipkg` and `src/interface/ffi/build.zig` a docs
+   repository. Both now follow the engine, depths included, and the mirror lists
+   mise tools rather than each language's binaries;
+** `check-mint-tokens.sh` treated "no build/just/repo-init.just" as proof of a
+   minted tree — but that recipe is carried verbatim into every child, so no child
+   was ever recognised and an unfilled `Get Out of the Way` passed (and
+   `survey-template-damage.sh` reported such repositories token-clean). The marker
+   is `archetypes/`, which the mint deletes;
+** `archetypes/*/prune.txt` dropped only `build/container/`, so a minted Julia
+   package and a minted Rust CLI both carried the Idris2/Zig seam: three languages
+   detected, `idris2` and `zig` installed, `idris2 --build` in `just build`. Both
+   presets declare neither the abi nor the ffi capability, so both now prune
+   `src/interface/`; `validate-rsr` requires the seam only of a tree that carries
+   it. The archetype tests assert the toolchain is single-language.
 
 ==== Added
 
